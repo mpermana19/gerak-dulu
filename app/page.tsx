@@ -32,6 +32,11 @@ export default function Home() {
   const [rowsMalam, setRowsMalam] = useState<{ jam: string; lokasi: string; ongkir: string }[]>([])
   const [cariKeyword, setCariKeyword] = useState('')
 
+  // ============== SCROLL KE ATAS OTOMATIS ==============
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [halaman])
+
   // ============== FORMAT JAM OTOMATIS ==============
   const formatJamOtomatis = (value: string) => {
     const cleaned = value.replace(/\D/g, '')
@@ -741,7 +746,7 @@ export default function Home() {
         {halaman === 'backup' && renderBackup()}
       </div>
 
-      {/* FOOTER - DIBUAT OLEH mpermana99 */}
+      {/* FOOTER */}
       <div style={{
         textAlign: 'center',
         paddingTop: 'clamp(24px, 6vw, 40px)',
