@@ -206,7 +206,7 @@ export default function Home() {
     const jamBulat = bulatkanJam(jamSekarang)
     const [h, m] = jamBulat.split(':').map(Number)
 
-    const targetJam = []
+    const targetJam: string[] = []
     for (let i = 1; i <= 3; i++) {
       let newM = m + i * 15
       let newH = h
@@ -217,21 +217,21 @@ export default function Home() {
 
     let filtered = data
     if (hariFilter !== 'all') {
-      filtered = data.filter(d => d.hari === parseInt(hariFilter))
+      filtered = data.filter((d: Spot) => d.hari === parseInt(hariFilter))
     }
 
-    let rekomSpot = filtered.filter(d => targetJam.includes(d.jam))
+    let rekomSpot = filtered.filter((d: Spot) => targetJam.includes(d.jam))
 
     const posisiLat = posisi.lat
     const posisiLng = posisi.lng
 
-    const rekomWithDetails = []
+    const rekomWithDetails: any[] = []
 
     for (const item of rekomSpot) {
       const { bintang, count } = getBintang(item.jam, item.lokasi)
 
       const coord = await getKoordinatDariAlamat(item.lokasi)
-      let jarak = null
+      let jarak: number | null = null
       if (coord && posisiLat && posisiLng) {
         jarak = await hitungJarakOSRM(posisiLat, posisiLng, coord.lat, coord.lng)
       }
@@ -248,15 +248,12 @@ export default function Home() {
 
     // URUTAN: JARAK TERDEKAT → BINTANG TERTINGGI → ONGKIR TERTINGGI
     rekomWithDetails.sort((a, b) => {
-      // 1. Jarak terdekat dulu
       if (a.jarak !== null && b.jarak !== null && a.jarak !== b.jarak) {
         return a.jarak - b.jarak
       }
-      // 2. Kalo jarak sama, liat bintang tertinggi
       const bintangA = a.bintang.length
       const bintangB = b.bintang.length
       if (bintangA !== bintangB) return bintangB - bintangA
-      // 3. Kalo sama semua, liat ongkir tertinggi
       return b.ongkir - a.ongkir
     })
 
@@ -335,7 +332,7 @@ export default function Home() {
   const hapusSpot = (id: number) => {
     if (!confirm('Hapus spot ini?')) return
     const dataNow = getData()
-    setDataStorage(dataNow.filter(d => d.id !== id))
+    setDataStorage(dataNow.filter((d: Spot) => d.id !== id))
     getRekomendasi().then(setRekomendasi)
   }
 
@@ -570,119 +567,113 @@ export default function Home() {
     </div>
   )
 
- // ============== RENDER MALAM ==============
-const renderMalam = () => (
-  <div className="halaman">
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(16px, 4vw, 24px)' }}>
-      <h2 style={{ fontSize: 'clamp(20px, 5vw, 26px)', fontWeight: 700 }}>🌙 Input Malam</h2>
-      <button className="btn-close" onClick={() => setHalaman('home')}>✕</button>
-    </div>
-    <div className="text-muted" style={{ marginBottom: 'clamp(12px, 3vw, 16px)' }}>📅 {new Date().toLocaleDateString('id-ID')}</div>
-    
-    {/* ROW INPUT - VERTIKAL */}
-    <div style={{ marginBottom: 'clamp(12px, 3vw, 16px)' }}>
-      {rowsMalam.map((row, index) => (
-        <div key={index} style={{ 
-          background: '#12121f', 
-          borderRadius: '12px', 
-          padding: '12px', 
-          marginBottom: '12px',
-          border: '1px solid #2a2a3e'
-        }}>
-          {/* Jam */}
-          <div style={{ marginBottom: '8px' }}>
-            <label style={{ fontSize: '12px', color: '#8888aa', display: 'block', marginBottom: '4px' }}>Jam</label>
-            <input 
-              value={row.jam} 
-              onChange={(e) => updateRowMalam(index, 'jam', formatJamOtomatis(e.target.value))} 
-              placeholder="1035" 
+  // ============== RENDER MALAM ==============
+  const renderMalam = () => (
+    <div className="halaman">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(16px, 4vw, 24px)' }}>
+        <h2 style={{ fontSize: 'clamp(20px, 5vw, 26px)', fontWeight: 700 }}>🌙 Input Malam</h2>
+        <button className="btn-close" onClick={() => setHalaman('home')}>✕</button>
+      </div>
+      <div className="text-muted" style={{ marginBottom: 'clamp(12px, 3vw, 16px)' }}>📅 {new Date().toLocaleDateString('id-ID')}</div>
+      
+      <div style={{ marginBottom: 'clamp(12px, 3vw, 16px)' }}>
+        {rowsMalam.map((row, index) => (
+          <div key={index} style={{ 
+            background: '#12121f', 
+            borderRadius: '12px', 
+            padding: '12px', 
+            marginBottom: '12px',
+            border: '1px solid #2a2a3e'
+          }}>
+            <div style={{ marginBottom: '8px' }}>
+              <label style={{ fontSize: '12px', color: '#8888aa', display: 'block', marginBottom: '4px' }}>Jam</label>
+              <input 
+                value={row.jam} 
+                onChange={(e) => updateRowMalam(index, 'jam', formatJamOtomatis(e.target.value))} 
+                placeholder="1035" 
+                style={{ 
+                  width: '100%', 
+                  padding: '12px', 
+                  borderRadius: '10px', 
+                  border: '1px solid #2a2a3e', 
+                  background: '#0a0a0f', 
+                  color: '#fff', 
+                  fontSize: '16px',
+                  minHeight: '44px'
+                }} 
+              />
+            </div>
+            
+            <div style={{ marginBottom: '8px' }}>
+              <label style={{ fontSize: '12px', color: '#8888aa', display: 'block', marginBottom: '4px' }}>Lokasi</label>
+              <input 
+                value={row.lokasi} 
+                onChange={(e) => updateRowMalam(index, 'lokasi', e.target.value)} 
+                placeholder="Jl. Cihampelas No. 123" 
+                style={{ 
+                  width: '100%', 
+                  padding: '12px', 
+                  borderRadius: '10px', 
+                  border: '1px solid #2a2a3e', 
+                  background: '#0a0a0f', 
+                  color: '#fff', 
+                  fontSize: '16px',
+                  minHeight: '44px'
+                }} 
+              />
+            </div>
+            
+            <div style={{ marginBottom: '8px' }}>
+              <label style={{ fontSize: '12px', color: '#8888aa', display: 'block', marginBottom: '4px' }}>Ongkir (Rp)</label>
+              <input 
+                value={row.ongkir} 
+                onChange={(e) => updateRowMalam(index, 'ongkir', e.target.value)} 
+                placeholder="15000" 
+                type="number" 
+                style={{ 
+                  width: '100%', 
+                  padding: '12px', 
+                  borderRadius: '10px', 
+                  border: '1px solid #2a2a3e', 
+                  background: '#0a0a0f', 
+                  color: '#fff', 
+                  fontSize: '16px',
+                  minHeight: '44px'
+                }} 
+              />
+            </div>
+            
+            <button 
+              onClick={() => hapusRowMalam(index)} 
               style={{ 
-                width: '100%', 
-                padding: '12px', 
-                borderRadius: '10px', 
-                border: '1px solid #2a2a3e', 
-                background: '#0a0a0f', 
+                background: '#ff4444', 
                 color: '#fff', 
-                fontSize: '16px',
-                minHeight: '44px'
-              }} 
-            />
-          </div>
-          
-          {/* Lokasi */}
-          <div style={{ marginBottom: '8px' }}>
-            <label style={{ fontSize: '12px', color: '#8888aa', display: 'block', marginBottom: '4px' }}>Lokasi</label>
-            <input 
-              value={row.lokasi} 
-              onChange={(e) => updateRowMalam(index, 'lokasi', e.target.value)} 
-              placeholder="Jl. Cihampelas No. 123" 
-              style={{ 
-                width: '100%', 
-                padding: '12px', 
+                border: 'none', 
                 borderRadius: '10px', 
-                border: '1px solid #2a2a3e', 
-                background: '#0a0a0f', 
-                color: '#fff', 
-                fontSize: '16px',
-                minHeight: '44px'
-              }} 
-            />
-          </div>
-          
-          {/* Ongkir */}
-          <div style={{ marginBottom: '8px' }}>
-            <label style={{ fontSize: '12px', color: '#8888aa', display: 'block', marginBottom: '4px' }}>Ongkir (Rp)</label>
-            <input 
-              value={row.ongkir} 
-              onChange={(e) => updateRowMalam(index, 'ongkir', e.target.value)} 
-              placeholder="15000" 
-              type="number" 
-              style={{ 
+                padding: '10px', 
                 width: '100%', 
-                padding: '12px', 
-                borderRadius: '10px', 
-                border: '1px solid #2a2a3e', 
-                background: '#0a0a0f', 
-                color: '#fff', 
-                fontSize: '16px',
-                minHeight: '44px'
-              }} 
-            />
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                marginTop: '4px'
+              }}
+            >
+              ✕ Hapus Baris
+            </button>
           </div>
-          
-          {/* Tombol Hapus */}
-          <button 
-            onClick={() => hapusRowMalam(index)} 
-            style={{ 
-              background: '#ff4444', 
-              color: '#fff', 
-              border: 'none', 
-              borderRadius: '10px', 
-              padding: '10px', 
-              width: '100%', 
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              marginTop: '4px'
-            }}
-          >
-            ✕ Hapus Baris
-          </button>
-        </div>
-      ))}
+        ))}
+      </div>
+      
+      <div style={{ display: 'flex', gap: 'clamp(8px, 2vw, 12px)', flexWrap: 'wrap' }}>
+        <button className="btn-secondary" style={{ flex: 1 }} onClick={tambahBarisMalam}>➕ Baris</button>
+        <button className="btn-primary" style={{ flex: 2 }} onClick={simpanSemuaMalam}>💾 Simpan Semua</button>
+      </div>
     </div>
-    
-    {/* Tombol Aksi */}
-    <div style={{ display: 'flex', gap: 'clamp(8px, 2vw, 12px)', flexWrap: 'wrap' }}>
-      <button className="btn-secondary" style={{ flex: 1 }} onClick={tambahBarisMalam}>➕ Baris</button>
-      <button className="btn-primary" style={{ flex: 2 }} onClick={simpanSemuaMalam}>💾 Simpan Semua</button>
-    </div>
-  </div>
-)
+  )
 
   // ============== RENDER KELOLA ==============
   const renderKelola = () => {
-    const filtered = data.filter(d => d.lokasi.toLowerCase().includes(cariKeyword.toLowerCase()))
+    const filtered = data.filter((d: Spot) => d.lokasi.toLowerCase().includes(cariKeyword.toLowerCase()))
     return (
       <div className="halaman">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(16px, 4vw, 24px)' }}>
@@ -748,6 +739,22 @@ const renderMalam = () => (
         {halaman === 'malam' && renderMalam()}
         {halaman === 'kelola' && renderKelola()}
         {halaman === 'backup' && renderBackup()}
+      </div>
+
+      {/* FOOTER - DIBUAT OLEH mpermana99 */}
+      <div style={{
+        textAlign: 'center',
+        paddingTop: 'clamp(24px, 6vw, 40px)',
+        paddingBottom: 'clamp(12px, 3vw, 20px)',
+        borderTop: '1px solid #2a2a3e',
+        marginTop: 'clamp(20px, 5vw, 32px)',
+        color: '#8888aa',
+        fontSize: 'clamp(12px, 2.8vw, 14px)',
+      }}>
+        <p>Dibuat oleh <span style={{ color: '#ff6b00', fontWeight: 600 }}>mpermana99</span></p>
+        <p style={{ fontSize: 'clamp(10px, 2.2vw, 12px)', marginTop: '4px', color: '#6b6b8a' }}>
+          © {new Date().getFullYear()} • Gerak Dulu
+        </p>
       </div>
     </main>
   )
