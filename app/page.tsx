@@ -53,39 +53,50 @@ export default function Home() {
     if (saved) setData(JSON.parse(saved))
     setLoading(false)
 
-    // Ambil posisi awal
-    ambilPosisi()
-    
-    // Update posisi tiap 60 detik
-    const intervalGPS = setInterval(ambilPosisi, 60000)
-    
+    const success = async (pos: GeolocationPosition) => {
+      const { latitude, longitude } = pos.coords
+      setPosisi(prev => ({ ...prev, lat: latitude, lng: longitude }))
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=16`)
+        const data = await res.json()
+        let nama = 'Lokasi tidak diketahui'
+        if (data.address) {
+          const a = data.address
+          nama = a.road || a.suburb || a.village || a.town || a.city || 'Lokasi tidak diketahui'
+        }
+        setPosisi(prev => ({ ...prev, nama }))
+      } catch (e) {
+        setPosisi(prev => ({ ...prev, nama: 'Gagal ambil nama lokasi' }))
+      }
+    }
+
+    const error = () => {
+      setPosisi(prev => ({ ...prev, lat: null, lng: null, nama: 'Aktifkan GPS & izinkan lokasi' }))
+    }
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(success, error, {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      })
+    } else {
+      setPosisi(prev => ({ ...prev, lat: null, lng: null, nama: 'Browser tidak support GPS' }))
+    }
+
+    // Update tiap 60 detik
+    const intervalGPS = setInterval(() => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(success, error, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
+        })
+      }
+    }, 60000)
+
     return () => clearInterval(intervalGPS)
   }, [])
-
-  // Fungsi ambil posisi
-  const ambilPosisi = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const { latitude, longitude } = pos.coords
-          setPosisi(prev => ({ ...prev, lat: latitude, lng: longitude }))
-          try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=16`)
-            const data = await res.json()
-            let nama = 'Bandung'
-            if (data.address) {
-              const a = data.address
-              nama = a.road || a.suburb || a.village || a.town || a.city || 'Bandung'
-            }
-            setPosisi(prev => ({ ...prev, nama }))
-          } catch (e) {
-            setPosisi(prev => ({ ...prev, nama: 'Bandung' }))
-          }
-        },
-        () => setPosisi(prev => ({ ...prev, nama: 'Izin Lokasi' }))
-      )
-    }
-  }
 
   // ============== UPDATE JAM ==============
   useEffect(() => {
@@ -186,7 +197,8 @@ export default function Home() {
   // ===== GEOLOKASI KE KOORDINAT =====
   const getKoordinatDariAlamat = async (alamat: string) => {
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(alamat + ', Bandung')}&format=json&limit=1`)
+      // 🔥 HAPUS paksaan ', Bandung' - cari alamat asli
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(alamat)}&format=json&limit=1`)
       const data = await res.json()
       if (data && data.length > 0) {
         return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
@@ -214,6 +226,11 @@ export default function Home() {
   // ===== REKOMENDASI =====
   const getRekomendasi = async () => {
     if (data.length === 0) return []
+    
+    // Cek GPS
+    if (!posisi.lat || !posisi.lng) {
+      return []
+    }
 
     setLoadingJarak(true)
 
@@ -225,7 +242,6 @@ export default function Home() {
       filtered = data.filter((d: Spot) => d.hari === parseInt(hariFilter))
     }
 
-    // Filter jam: dari jam sekarang sampai 23:59
     filtered = filtered.filter((d: Spot) => d.jam >= jamSekarang && d.jam <= '23:59')
 
     const posisiLat = posisi.lat
@@ -252,7 +268,7 @@ export default function Home() {
       })
     }
 
-    // URUTAN: JARAK TERDEKAT → BINTANG TERTINGGI → ONGKIR TERTINGGI
+    // Urutan: jarak terdekat → bintang tertinggi → ongkir tertinggi
     rekomWithDetails.sort((a, b) => {
       if (a.jarak !== null && b.jarak !== null && a.jarak !== b.jarak) {
         return a.jarak - b.jarak
@@ -388,9 +404,9 @@ export default function Home() {
     e.target.value = ''
   }
 
-  // ============== LOAD REKOMENDASI OTOMATIS SETIAP 1 MENIT ==============
+  // ============== LOAD REKOMENDASI ==============
   const loadRekomendasi = () => {
-    if (!loading && data.length > 0) {
+    if (!loading) {
       getRekomendasi().then(setRekomendasi)
     }
   }
@@ -403,8 +419,10 @@ export default function Home() {
 
   // ============== RENDER HOME ==============
   const renderHome = () => {
-    const utama = rekomendasi.length > 0 ? rekomendasi[0] : null // TOP 1
-    const lain = rekomendasi.slice(1) // sisanya
+    const utama = rekomendasi.length > 0 ? rekomendasi[0] : null
+    const lain = rekomendasi.slice(1)
+
+    const gpsAktif = posisi.lat !== null && posisi.lng !== null
 
     return (
       <div className="halaman">
@@ -460,9 +478,15 @@ export default function Home() {
         </div>
 
         {/* POSISI */}
-        <div className="posisi-bar">
+        <div className="posisi-bar" style={{ 
+          background: gpsAktif ? '#1a1a2e' : '#2a1a1a',
+          border: gpsAktif ? '1px solid #2a2a4e' : '1px solid #ff4444'
+        }}>
           <span className="label">📍 LOKASI</span>
-          <span className="value">{posisi.nama}</span>
+          <span className="value" style={{ color: gpsAktif ? '#fff' : '#ff6666' }}>
+            {posisi.nama}
+            {!gpsAktif && ' ⚠️'}
+          </span>
         </div>
 
         {/* FILTER HARI */}
@@ -482,75 +506,114 @@ export default function Home() {
           </div>
         )}
 
-        {/* REKOMENDASI TOP 1 */}
-        <div className="rekom-card" style={{ padding: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span className="badge-orange" style={{ fontSize: '14px', padding: '4px 12px' }}>🎯 REKOMENDASI</span>
-            <span className="bintang" style={{ fontSize: '20px' }}>{utama ? utama.bintang : '⭐'}</span>
-          </div>
-          {!utama ? (
-            <div style={{ color: '#8888aa', textAlign: 'center', padding: '16px' }}>
-              Tidak ada rekomendasi
+        {/* PERINGATAN GPS */}
+        {!gpsAktif && (
+          <div style={{ 
+            background: '#2a1a1a', 
+            border: '1px solid #ff4444',
+            borderRadius: '12px',
+            padding: '16px',
+            textAlign: 'center',
+            marginBottom: '16px'
+          }}>
+            <div style={{ color: '#ff6666', fontSize: '18px', fontWeight: 'bold' }}>
+              ⚠️ GPS BELUM AKTIF
             </div>
-          ) : (
-            <>
-              <div className="lokasi" style={{ fontSize: 'clamp(18px, 4.5vw, 22px)', fontWeight: 600, marginBottom: '8px' }}>
-                {utama.lokasi}
+            <div style={{ color: '#ff8888', fontSize: '14px', marginTop: '8px' }}>
+              Nyalakan GPS dan izinkan akses lokasi di browser
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                marginTop: '12px',
+                background: '#ff6b00',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 20px',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                cursor: 'pointer'
+              }}
+            >
+              🔄 Refresh GPS
+            </button>
+          </div>
+        )}
+
+        {/* REKOMENDASI */}
+        {gpsAktif && (
+          <div className="rekom-card" style={{ padding: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span className="badge-orange" style={{ fontSize: '14px', padding: '4px 12px' }}>🎯 REKOMENDASI</span>
+              <span className="bintang" style={{ fontSize: '20px' }}>{utama ? utama.bintang : '⭐'}</span>
+            </div>
+            {!utama ? (
+              <div style={{ color: '#8888aa', textAlign: 'center', padding: '16px' }}>
+                Tidak ada rekomendasi
               </div>
-              <div className="detail" style={{ fontSize: '14px', gap: '12px' }}>
-                <span>⏰ {utama.jam}</span>
-                <span>🛵 {utama.count}x dapet</span>
-                <span>📏 {utama.jarak !== null ? `${utama.jarak} km` : '?'}</span>
-                <span>💰 Rp {utama.ongkir.toLocaleString()}</span>
-              </div>
-              <button 
-                className="btn-primary" 
-                onClick={() => {
-                  const searchQuery = encodeURIComponent(utama.lokasi)
-                  window.open(`https://www.google.com/maps/dir/?api=1&destination=${searchQuery}&travelmode=driving`, '_blank')
-                }}
-                style={{ 
-                  marginTop: '12px', 
-                  padding: '8px 16px', 
-                  fontSize: '14px',
-                  width: '100%'
-                }}
-              >
-                🚀 NAVIGASI
-              </button>
-            </>
-          )}
-        </div>
+            ) : (
+              <>
+                <div className="lokasi" style={{ fontSize: 'clamp(18px, 4.5vw, 22px)', fontWeight: 600, marginBottom: '8px' }}>
+                  {utama.lokasi}
+                </div>
+                <div className="detail" style={{ fontSize: '14px', gap: '12px' }}>
+                  <span>⏰ {utama.jam}</span>
+                  <span>🛵 {utama.count}x dapet</span>
+                  <span>📏 {utama.jarak !== null ? `${utama.jarak} km` : '?'}</span>
+                  <span>💰 Rp {utama.ongkir.toLocaleString()}</span>
+                </div>
+                <button 
+                  className="btn-primary" 
+                  onClick={() => {
+                    const searchQuery = encodeURIComponent(utama.lokasi)
+                    window.open(`https://www.google.com/maps/dir/?api=1&destination=${searchQuery}&travelmode=driving`, '_blank')
+                  }}
+                  style={{ 
+                    marginTop: '12px', 
+                    padding: '8px 16px', 
+                    fontSize: '14px',
+                    width: '100%'
+                  }}
+                >
+                  🚀 NAVIGASI
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
         {/* SPOT LAIN */}
-        <div className="card">
-          <div className="card-header">
-            <span style={{ fontWeight: 600 }}>📋 SPOT LAIN</span>
-            <span className="text-muted">{lain.length} spot</span>
-          </div>
-          {lain.length === 0 ? (
-            <div style={{ color: '#8888aa', textAlign: 'center', padding: 'clamp(16px, 4vw, 24px)' }}>Tidak ada spot lain.</div>
-          ) : (
-            lain.map((item) => (
-              <div key={item.id} className="spot-item" style={{ padding: '10px 0' }}>
-                <div className="kiri">
-                  <div className="nama" style={{ fontSize: '15px' }}>{item.bintang} {item.lokasi}</div>
-                  <div className="jam" style={{ fontSize: '13px' }}>⏰ {item.jam} 💰 Rp {item.ongkir.toLocaleString()} ({item.count}x) 📏 {item.jarak !== null ? `${item.jarak} km` : '?'}</div>
+        {gpsAktif && (
+          <div className="card">
+            <div className="card-header">
+              <span style={{ fontWeight: 600 }}>📋 SPOT LAIN</span>
+              <span className="text-muted">{lain.length} spot</span>
+            </div>
+            {lain.length === 0 ? (
+              <div style={{ color: '#8888aa', textAlign: 'center', padding: 'clamp(16px, 4vw, 24px)' }}>Tidak ada spot lain.</div>
+            ) : (
+              lain.map((item) => (
+                <div key={item.id} className="spot-item" style={{ padding: '10px 0' }}>
+                  <div className="kiri">
+                    <div className="nama" style={{ fontSize: '15px' }}>{item.bintang} {item.lokasi}</div>
+                    <div className="jam" style={{ fontSize: '13px' }}>⏰ {item.jam} 💰 Rp {item.ongkir.toLocaleString()} ({item.count}x) 📏 {item.jarak !== null ? `${item.jarak} km` : '?'}</div>
+                  </div>
+                  <div className="kanan" style={{ fontSize: '13px' }}>{item.count}x</div>
                 </div>
-                <div className="kanan" style={{ fontSize: '13px' }}>{item.count}x</div>
-              </div>
-            ))
-          )}
-        </div>
+              ))
+            )}
+          </div>
+        )}
 
-        {/* 3 TOMBOL ATAS */}
+        {/* 3 TOMBOL BAWAH */}
         <div className="bottom-grid">
           <button onClick={() => setHalaman('kelola')}>📋 Kelola</button>
           <button onClick={() => setHalaman('backup')}>💾 Backup</button>
           <button onClick={() => window.location.reload()}>📍 Refresh</button>
         </div>
 
-        {/* TOMBOL INSTALL LEBAR */}
+        {/* TOMBOL INSTALL */}
         {!isInstalled ? (
           <button 
             onClick={handleInstall} 
