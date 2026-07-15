@@ -215,7 +215,6 @@ export default function Home() {
       const item = filtered[i]
       const { bintang, count } = getBintang(item.jam, item.lokasi)
 
-      // Delay 500ms antar request biar gak kena limit
       if (i > 0) await new Promise(resolve => setTimeout(resolve, 500))
 
       const coord = await getKoordinatDariAlamat(item.lokasi)
@@ -339,7 +338,7 @@ export default function Home() {
       return
     }
     const dataNow = getData()
-    const index = dataNow.findIndex(d => d.id === editData.id)
+    const index = dataNow.findIndex((d: Spot) => d.id === editData.id)
     if (index !== -1) {
       dataNow[index] = {
         ...dataNow[index],
