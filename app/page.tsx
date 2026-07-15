@@ -1,3 +1,4 @@
+```typescript
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -32,12 +33,10 @@ export default function Home() {
   const [rowsMalam, setRowsMalam] = useState<{ jam: string; lokasi: string; ongkir: string }[]>([])
   const [cariKeyword, setCariKeyword] = useState('')
 
-  // ============== SCROLL KE ATAS OTOMATIS ==============
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [halaman])
 
-  // ============== FORMAT JAM OTOMATIS ==============
   const formatJamOtomatis = (value: string) => {
     const cleaned = value.replace(/\D/g, '')
     if (cleaned.length === 0) return ''
@@ -47,7 +46,6 @@ export default function Home() {
     return cleaned
   }
 
-  // ============== LOAD DATA & GEOLOKASI ==============
   useEffect(() => {
     const saved = localStorage.getItem('gerakDuluData')
     if (saved) setData(JSON.parse(saved))
@@ -76,7 +74,6 @@ export default function Home() {
     }
   }, [])
 
-  // ============== UPDATE JAM ==============
   useEffect(() => {
     const updateJam = () => {
       const now = new Date()
@@ -87,7 +84,6 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [])
 
-  // ============== INSTALL PWA ==============
   useEffect(() => {
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true)
@@ -121,7 +117,6 @@ export default function Home() {
     }
   }
 
-  // ============== FUNGSI DATA ==============
   const getData = () => {
     try {
       const raw = localStorage.getItem('gerakDuluData')
@@ -160,7 +155,6 @@ export default function Home() {
     return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`
   }
 
-  // ===== FUNGSI BINTANG =====
   const getBintang = (jam: string, lokasi: string) => {
     const filtered = data.filter(d => d.jam === jam && d.lokasi.toLowerCase() === lokasi.toLowerCase())
     const count = filtered.length
@@ -172,7 +166,6 @@ export default function Home() {
     return { bintang, count }
   }
 
-  // ===== GEOLOKASI KE KOORDINAT =====
   const getKoordinatDariAlamat = async (alamat: string) => {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(alamat + ', Bandung')}&format=json&limit=1`)
@@ -184,7 +177,6 @@ export default function Home() {
     return null
   }
 
-  // ===== HITUNG JARAK REAL PAKE OSRM =====
   const hitungJarakOSRM = async (lat1: number, lng1: number, lat2: number, lng2: number) => {
     try {
       const url = `https://router.project-osrm.org/route/v1/driving/${lng1},${lat1};${lng2},${lat2}?overview=false`
@@ -200,7 +192,6 @@ export default function Home() {
     }
   }
 
-  // ===== REKOMENDASI =====
   const getRekomendasi = async () => {
     if (data.length === 0) return []
 
@@ -209,13 +200,11 @@ export default function Home() {
     const now = new Date()
     const jamSekarang = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
-    // Filter hari (tetap)
     let filtered = data
     if (hariFilter !== 'all') {
       filtered = data.filter((d: Spot) => d.hari === parseInt(hariFilter))
     }
 
-    // Filter jam: cuma yang jamnya >= jam sekarang (belum lewat)
     filtered = filtered.filter((d: Spot) => d.jam >= jamSekarang)
 
     const posisiLat = posisi.lat
@@ -242,7 +231,6 @@ export default function Home() {
       })
     }
 
-    // URUTAN: JARAK TERDEKAT → BINTANG TERTINGGI → ONGKIR TERTINGGI
     rekomWithDetails.sort((a, b) => {
       if (a.jarak !== null && b.jarak !== null && a.jarak !== b.jarak) {
         return a.jarak - b.jarak
@@ -259,7 +247,6 @@ export default function Home() {
 
   const hariNama = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
 
-  // ============== FUNGSI TAMBAH ==============
   const simpanSpot = () => {
     if (!inputLokasi || !inputJam || !inputOngkir || parseInt(inputOngkir) <= 0) {
       alert('Isi semua data dengan benar!')
@@ -285,7 +272,6 @@ export default function Home() {
     getRekomendasi().then(setRekomendasi)
   }
 
-  // ============== FUNGSI MALAM ==============
   const tambahBarisMalam = () => {
     setRowsMalam([...rowsMalam, { jam: '', lokasi: '', ongkir: '' }])
   }
@@ -324,7 +310,6 @@ export default function Home() {
     getRekomendasi().then(setRekomendasi)
   }
 
-  // ============== FUNGSI KELOLA ==============
   const hapusSpot = (id: number) => {
     if (!confirm('Hapus spot ini?')) return
     const dataNow = getData()
@@ -332,7 +317,6 @@ export default function Home() {
     getRekomendasi().then(setRekomendasi)
   }
 
-  // ============== FUNGSI BACKUP ==============
   const exportData = () => {
     const dataNow = getData()
     if (dataNow.length === 0) { alert('Belum ada data!'); return }
@@ -378,7 +362,6 @@ export default function Home() {
     e.target.value = ''
   }
 
-  // ============== LOAD REKOMENDASI OTOMATIS SETIAP 1 MENIT ==============
   const loadRekomendasi = () => {
     if (!loading && data.length > 0) {
       getRekomendasi().then(setRekomendasi)
@@ -391,7 +374,6 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [data, loading, hariFilter, posisi.lat, posisi.lng])
 
-  // ============== RENDER HOME ==============
   const renderHome = () => {
     const utama = rekomendasi.length > 0 ? rekomendasi[0] : null
     const lain = rekomendasi.slice(1)
@@ -417,7 +399,6 @@ export default function Home() {
 
     return (
       <div className="halaman">
-        {/* HEADER */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(12px, 3vw, 16px)' }}>
           <h1 style={{ fontSize: 'clamp(22px, 5.5vw, 30px)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 'clamp(6px, 1.5vw, 10px)' }}>
             <img src="/favicon.ico" alt="logo" style={{ width: 'clamp(28px, 7vw, 36px)', height: 'clamp(28px, 7vw, 36px)' }} />
@@ -426,13 +407,11 @@ export default function Home() {
           <span style={{ color: '#ff6b00', fontWeight: 700, fontSize: 'clamp(18px, 4.5vw, 24px)' }}>⏰ {jam}</span>
         </div>
 
-        {/* POSISI */}
         <div className="posisi-bar">
           <span className="label">📍 LOKASI</span>
           <span className="value">{posisi.nama}</span>
         </div>
 
-        {/* FILTER HARI */}
         <div className="filter-grid">
           <button className={hariFilter === 'all' ? 'active' : ''} onClick={() => setHariFilter('all')}>Semua</button>
           {[0, 1, 2, 3, 4, 5, 6].map((h) => (
@@ -442,14 +421,12 @@ export default function Home() {
           ))}
         </div>
 
-        {/* LOADING JARAK */}
         {loadingJarak && (
           <div style={{ textAlign: 'center', padding: '12px', color: '#8888aa' }}>
             <span>⏳ Menghitung jarak real...</span>
           </div>
         )}
 
-        {/* REKOMENDASI UTAMA */}
         <div className="rekom-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="badge-orange">🎯 REKOMENDASI</span>
@@ -477,7 +454,6 @@ export default function Home() {
           </button>
         </div>
 
-        {/* SPOT LAIN */}
         <div className="card">
           <div className="card-header">
             <span style={{ fontWeight: 600 }}>📋 SPOT LAIN</span>
@@ -498,7 +474,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* STATISTIK */}
         <div className="card">
           <div className="card-header"><span style={{ fontWeight: 600 }}>📊 STATISTIK</span></div>
           <div className="stat-grid">
@@ -509,7 +484,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* TOMBOL BAWAH - GRID 6 */}
         <div className="bottom-grid">
           <button className="orange" onClick={() => setHalaman('tambah')}>➕ Tambah</button>
           <button onClick={() => setHalaman('malam')}>🌙 Malam</button>
@@ -526,7 +500,6 @@ export default function Home() {
     )
   }
 
-  // ============== RENDER TAMBAH ==============
   const renderTambah = () => (
     <div className="halaman">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(16px, 4vw, 24px)' }}>
@@ -569,7 +542,6 @@ export default function Home() {
     </div>
   )
 
-  // ============== RENDER MALAM ==============
   const renderMalam = () => (
     <div className="halaman">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(16px, 4vw, 24px)' }}>
@@ -673,7 +645,6 @@ export default function Home() {
     </div>
   )
 
-  // ============== RENDER KELOLA ==============
   const renderKelola = () => {
     const filtered = data.filter((d: Spot) => d.lokasi.toLowerCase().includes(cariKeyword.toLowerCase()))
     return (
@@ -707,7 +678,6 @@ export default function Home() {
     )
   }
 
-  // ============== RENDER BACKUP ==============
   const renderBackup = () => (
     <div className="halaman">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(16px, 4vw, 24px)' }}>
@@ -723,7 +693,6 @@ export default function Home() {
     </div>
   )
 
-  // ============== LOADING ==============
   if (loading) {
     return (
       <div style={{ background: '#0a0a0f', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 'clamp(16px, 4vw, 20px)' }}>
@@ -732,7 +701,6 @@ export default function Home() {
     )
   }
 
-  // ============== RENDER UTAMA ==============
   return (
     <main style={{ background: '#0a0a0f', minHeight: '100vh', padding: 'clamp(10px, 3vw, 16px)', paddingBottom: '100px', color: '#fff' }}>
       <div className="container">
@@ -743,7 +711,6 @@ export default function Home() {
         {halaman === 'backup' && renderBackup()}
       </div>
 
-      {/* FOOTER */}
       <div style={{
         textAlign: 'center',
         paddingTop: 'clamp(24px, 6vw, 40px)',
