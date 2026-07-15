@@ -196,23 +196,37 @@ export default function Home() {
 
     setLoadingJarak(true)
 
+    const jamSekarang = `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`
+
     let filtered = data
     if (hariFilter !== 'all') {
       filtered = data.filter((d: Spot) => d.hari === parseInt(hariFilter))
     }
+
+    // Filter jam: hanya yang belum lewat
+    filtered = filtered.filter((d: Spot) => d.jam >= jamSekarang)
+
+    const posisiLat = posisi.lat
+    const posisiLng = posisi.lng
 
     const rekomWithDetails: any[] = []
 
     for (const item of filtered) {
       const { bintang, count } = getBintang(item.jam, item.lokasi)
 
+      const coord = await getKoordinatDariAlamat(item.lokasi)
+      let jarak: number | null = null
+      if (coord && posisiLat && posisiLng) {
+        jarak = await hitungJarakOSRM(posisiLat, posisiLng, coord.lat, coord.lng)
+      }
+
       rekomWithDetails.push({
         ...item,
         bintang,
         count,
-        jarak: 0,
-        lat: null,
-        lng: null
+        jarak,
+        lat: coord?.lat || null,
+        lng: coord?.lng || null
       })
     }
 
@@ -357,7 +371,7 @@ export default function Home() {
     loadRekomendasi()
     const interval = setInterval(loadRekomendasi, 60000)
     return () => clearInterval(interval)
-  }, [data, loading, hariFilter])
+  }, [data, loading, hariFilter, posisi.lat, posisi.lng])
 
   const renderHome = () => {
     const utama = rekomendasi.length > 0 ? rekomendasi[0] : null
