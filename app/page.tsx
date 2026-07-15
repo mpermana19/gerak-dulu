@@ -64,7 +64,6 @@ export default function Home() {
     const success = async (pos: GeolocationPosition) => {
       const { latitude, longitude } = pos.coords
       
-      // 🔥 SET KOORDINAT LANGSUNG, NAMA PAKAI KOORDINAT
       setPosisi({
         lat: latitude,
         lng: longitude,
@@ -73,7 +72,6 @@ export default function Home() {
     }
 
     const error = () => {
-      // Fallback: IP geolocation
       fetch('https://ipapi.co/json/')
         .then(res => res.json())
         .then(data => {
@@ -390,7 +388,7 @@ export default function Home() {
     }
 
     const dataNow = getData()
-    const index = dataNow.findIndex(d => d.id === editData.id)
+    const index = dataNow.findIndex((d: Spot) => d.id === editData.id)
     if (index !== -1) {
       dataNow[index] = {
         ...dataNow[index],
