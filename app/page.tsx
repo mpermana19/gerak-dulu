@@ -419,40 +419,36 @@ export default function Home() {
     const utama = rekomendasi.length > 0 ? rekomendasi[0] : null
     const lain = rekomendasi.slice(1)
 
-    const totalSpot = data.length
-    const countMap: Record<string, { lokasi: string; count: number }> = {}
-    for (const item of data) {
-      const key = item.lokasi.toLowerCase()
-      if (!countMap[key]) countMap[key] = { lokasi: item.lokasi, count: 0 }
-      countMap[key].count++
-    }
-    let favorit = '-'
-    let maxCount = 0
-    for (const key in countMap) {
-      if (countMap[key].count > maxCount) {
-        maxCount = countMap[key].count
-        favorit = countMap[key].lokasi
-      }
-    }
-    const totalOngkir = data.reduce((sum, d) => sum + d.ongkir, 0)
-    const rataOngkir = data.length > 0 ? Math.round(totalOngkir / data.length) : 0
-    const maxOngkir = data.length > 0 ? Math.max(...data.map(d => d.ongkir)) : 0
-
     return (
       <div className="halaman">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(12px, 3vw, 16px)' }}>
-          <h1 style={{ fontSize: 'clamp(22px, 5.5vw, 30px)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 'clamp(6px, 1.5vw, 10px)' }}>
-            <img src="/favicon.ico" alt="logo" style={{ width: 'clamp(28px, 7vw, 36px)', height: 'clamp(28px, 7vw, 36px)' }} />
-            <span>GERAK <span style={{ color: '#ff6b00' }}>DULU</span></span>
-          </h1>
-          <span style={{ color: '#ff6b00', fontWeight: 700, fontSize: 'clamp(18px, 4.5vw, 24px)' }}>⏰ {jam}</span>
+        {/* HEADER + JAM + TOMBOL TAMBAH */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(8px, 2vw, 12px)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 2vw, 12px)' }}>
+            <h1 style={{ fontSize: 'clamp(20px, 5vw, 26px)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 'clamp(4px, 1vw, 8px)' }}>
+              <img src="/favicon.ico" alt="logo" style={{ width: 'clamp(24px, 6vw, 32px)', height: 'clamp(24px, 6vw, 32px)' }} />
+              <span>GERAK <span style={{ color: '#ff6b00' }}>DULU</span></span>
+            </h1>
+          </div>
+          <span style={{ color: '#ff6b00', fontWeight: 700, fontSize: 'clamp(16px, 4vw, 22px)' }}>⏰ {jam}</span>
         </div>
 
+        {/* TOMBOL TAMBAH & MALAM */}
+        <div style={{ display: 'flex', gap: 'clamp(8px, 2vw, 12px)', marginBottom: 'clamp(12px, 3vw, 16px)' }}>
+          <button className="orange" onClick={() => setHalaman('tambah')} style={{ flex: 1, padding: 'clamp(10px, 2.5vw, 14px)', fontSize: 'clamp(14px, 3.5vw, 18px)' }}>
+            ➕ Tambah
+          </button>
+          <button onClick={() => setHalaman('malam')} style={{ flex: 1, padding: 'clamp(10px, 2.5vw, 14px)', fontSize: 'clamp(14px, 3.5vw, 18px)' }}>
+            🌙 Malam
+          </button>
+        </div>
+
+        {/* POSISI */}
         <div className="posisi-bar">
           <span className="label">📍 LOKASI</span>
           <span className="value">{posisi.nama}</span>
         </div>
 
+        {/* FILTER HARI */}
         <div className="filter-grid">
           <button className={hariFilter === 'all' ? 'active' : ''} onClick={() => setHariFilter('all')}>Semua</button>
           {[0, 1, 2, 3, 4, 5, 6].map((h) => (
@@ -462,12 +458,14 @@ export default function Home() {
           ))}
         </div>
 
+        {/* LOADING JARAK */}
         {loadingJarak && (
           <div style={{ textAlign: 'center', padding: '12px', color: '#8888aa' }}>
             <span>⏳ Menghitung jarak real...</span>
           </div>
         )}
 
+        {/* REKOMENDASI UTAMA */}
         <div className="rekom-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="badge-orange">🎯 REKOMENDASI</span>
@@ -495,6 +493,7 @@ export default function Home() {
           </button>
         </div>
 
+        {/* SPOT LAIN */}
         <div className="card">
           <div className="card-header">
             <span style={{ fontWeight: 600 }}>📋 SPOT LAIN</span>
@@ -515,19 +514,8 @@ export default function Home() {
           )}
         </div>
 
-        <div className="card">
-          <div className="card-header"><span style={{ fontWeight: 600 }}>📊 STATISTIK</span></div>
-          <div className="stat-grid">
-            <div className="stat-item"><div className="angka">{totalSpot}</div><div className="label">Total Spot</div></div>
-            <div className="stat-item"><div className="angka">{favorit}</div><div className="label">Spot Favorit</div></div>
-            <div className="stat-item"><div className="angka">Rp{rataOngkir.toLocaleString()}</div><div className="label">Rata-rata Ongkir</div></div>
-            <div className="stat-item"><div className="angka">Rp{maxOngkir.toLocaleString()}</div><div className="label">Ongkir Tertinggi</div></div>
-          </div>
-        </div>
-
+        {/* TOMBOL BAWAH */}
         <div className="bottom-grid">
-          <button className="orange" onClick={() => setHalaman('tambah')}>➕ Tambah</button>
-          <button onClick={() => setHalaman('malam')}>🌙 Malam</button>
           <button onClick={() => setHalaman('kelola')}>📋 Kelola</button>
           <button onClick={() => setHalaman('backup')}>💾 Backup</button>
           <button onClick={() => window.location.reload()}>📍 Refresh</button>
