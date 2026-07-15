@@ -66,7 +66,6 @@ export default function Home() {
       
       setPosisi(prev => ({ ...prev, lat: latitude, lng: longitude }))
       
-      // Ambil nama kelurahan/kecamatan dari koordinat
       try {
         const res = await fetch(
           `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=16&addressdetails=1`
@@ -74,7 +73,6 @@ export default function Home() {
         const data = await res.json()
         if (data.address) {
           const a = data.address
-          // Prioritas: road → suburb (kelurahan) → village → town → city → county (kecamatan)
           const nama = a.road || a.suburb || a.village || a.town || a.city || a.county || 'Lokasi'
           setPosisi(prev => ({ ...prev, nama }))
         } else {
@@ -224,11 +222,12 @@ export default function Home() {
   }
 
   // ===== GEOLOKASI KE KOORDINAT =====
+  // ===== GEOLOKASI KE KOORDINAT =====
   const getKoordinatDariAlamat = async (alamat: string) => {
     try {
-      // Cari alamat dengan embel-embel Bandung (karena lo cuma di Bandung Raya)
+      // 🔥 NO MORE BANDUNG FORCE
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(alamat + ', Bandung')}&format=json&limit=1`
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(alamat)}&format=json&limit=1`
       )
       const data = await res.json()
       if (data && data.length > 0) {
@@ -325,7 +324,7 @@ export default function Home() {
     const dataNow = getData()
     dataNow.push({
       id: getNextId(dataNow),
-      lokasi: inputLokasi,
+      lokasi: inputLokasi, // 🔥 No more Bandung force
       jam: jam,
       ongkir: parseInt(inputOngkir),
       hari: hari,
@@ -364,7 +363,7 @@ export default function Home() {
       const jam = bulatkanJam(row.jam)
       dataNow.push({
         id: getNextId(dataNow),
-        lokasi: row.lokasi,
+        lokasi: row.lokasi, // 🔥 No more Bandung force
         jam: jam,
         ongkir: parseInt(row.ongkir),
         hari: hari,
@@ -409,7 +408,7 @@ export default function Home() {
     if (index !== -1) {
       dataNow[index] = {
         ...dataNow[index],
-        lokasi: editLokasi,
+        lokasi: editLokasi, // 🔥 No more Bandung force
         jam: bulatkanJam(editJam),
         ongkir: parseInt(editOngkir),
         hari: parseInt(editHari)
@@ -727,13 +726,13 @@ export default function Home() {
         <button className="btn-close" onClick={() => setHalaman('home')}>✕</button>
       </div>
       <div className="input-group">
-        <label>Lokasi (isi alamat jelas)</label>
+        <label>Lokasi (isi alamat jelas + kota)</label>
         <input 
           value={inputLokasi} 
           onChange={(e) => setInputLokasi(e.target.value)} 
-          placeholder="Jl. Cihampelas No. 123" 
+          placeholder="Jl. Mesjid, Cimahi" 
         />
-        <div style={{ fontSize: '11px', color: '#8888aa', marginTop: '4px' }}>Makin detail, makin akurat navigasi & jarak</div>
+        <div style={{ fontSize: '11px', color: '#8888aa', marginTop: '4px' }}>Contoh: Jl. Dago, Bandung</div>
       </div>
       <div className="input-group">
         <label>Jam</label>
@@ -800,11 +799,11 @@ export default function Home() {
             </div>
             
             <div style={{ marginBottom: '8px' }}>
-              <label style={{ fontSize: '12px', color: '#8888aa', display: 'block', marginBottom: '4px' }}>Lokasi</label>
+              <label style={{ fontSize: '12px', color: '#8888aa', display: 'block', marginBottom: '4px' }}>Lokasi + Kota</label>
               <input 
                 value={row.lokasi} 
                 onChange={(e) => updateRowMalam(index, 'lokasi', e.target.value)} 
-                placeholder="Jl. Cihampelas No. 123" 
+                placeholder="Jl. Mesjid, Cimahi" 
                 style={{ 
                   width: '100%', 
                   padding: '12px', 
@@ -968,11 +967,11 @@ export default function Home() {
               </div>
 
               <div className="input-group">
-                <label>Lokasi</label>
+                <label>Lokasi (alamat + kota)</label>
                 <input 
                   value={editLokasi} 
                   onChange={(e) => setEditLokasi(e.target.value)} 
-                  placeholder="Jl. Cihampelas No. 123" 
+                  placeholder="Jl. Mesjid, Cimahi" 
                 />
               </div>
 
