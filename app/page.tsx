@@ -1,3 +1,4 @@
+```typescript
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -200,7 +201,7 @@ export default function Home() {
     }
   }
 
-  // ===== REKOMENDASI CERDAS DENGAN JARAK REAL =====
+  // ===== REKOMENDASI =====
   const getRekomendasi = async () => {
     if (data.length === 0) return []
 
@@ -208,31 +209,22 @@ export default function Home() {
 
     const now = new Date()
     const jamSekarang = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-    const jamBulat = bulatkanJam(jamSekarang)
-    const [h, m] = jamBulat.split(':').map(Number)
 
-    const targetJam: string[] = []
-    for (let i = 1; i <= 3; i++) {
-      let newM = m + i * 15
-      let newH = h
-      if (newM >= 60) { newH = h + Math.floor(newM / 60); newM = newM % 60 }
-      if (newH >= 24) newH = newH - 24
-      targetJam.push(`${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`)
-    }
-
+    // Filter hari (tetap)
     let filtered = data
     if (hariFilter !== 'all') {
       filtered = data.filter((d: Spot) => d.hari === parseInt(hariFilter))
     }
 
-    let rekomSpot = filtered.filter((d: Spot) => targetJam.includes(d.jam))
+    // Filter jam: cuma yang jamnya >= jam sekarang (belum lewat)
+    filtered = filtered.filter((d: Spot) => d.jam >= jamSekarang)
 
     const posisiLat = posisi.lat
     const posisiLng = posisi.lng
 
     const rekomWithDetails: any[] = []
 
-    for (const item of rekomSpot) {
+    for (const item of filtered) {
       const { bintang, count } = getBintang(item.jam, item.lokasi)
 
       const coord = await getKoordinatDariAlamat(item.lokasi)
@@ -387,12 +379,18 @@ export default function Home() {
     e.target.value = ''
   }
 
-  // ============== LOAD REKOMENDASI ==============
-  useEffect(() => {
+  // ============== LOAD REKOMENDASI OTOMATIS SETIAP 1 MENIT ==============
+  const loadRekomendasi = () => {
     if (!loading && data.length > 0) {
       getRekomendasi().then(setRekomendasi)
     }
-  }, [data, loading, hariFilter, posisi])
+  }
+
+  useEffect(() => {
+    loadRekomendasi()
+    const interval = setInterval(loadRekomendasi, 60000)
+    return () => clearInterval(interval)
+  }, [data, loading, hariFilter, posisi.lat, posisi.lng])
 
   // ============== RENDER HOME ==============
   const renderHome = () => {
@@ -764,3 +762,4 @@ export default function Home() {
     </main>
   )
 }
+```
