@@ -64,11 +64,25 @@ export default function Home() {
     const success = async (pos: GeolocationPosition) => {
       const { latitude, longitude } = pos.coords
       
-      setPosisi({
-        lat: latitude,
-        lng: longitude,
-        nama: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
-      })
+      setPosisi(prev => ({ ...prev, lat: latitude, lng: longitude }))
+      
+      // Ambil nama kelurahan/kecamatan dari koordinat
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=16&addressdetails=1`
+        )
+        const data = await res.json()
+        if (data.address) {
+          const a = data.address
+          // Prioritas: road → suburb (kelurahan) → village → town → city → county (kecamatan)
+          const nama = a.road || a.suburb || a.village || a.town || a.city || a.county || 'Lokasi'
+          setPosisi(prev => ({ ...prev, nama }))
+        } else {
+          setPosisi(prev => ({ ...prev, nama: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}` }))
+        }
+      } catch (e) {
+        setPosisi(prev => ({ ...prev, nama: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}` }))
+      }
     }
 
     const error = () => {
@@ -79,7 +93,7 @@ export default function Home() {
             setPosisi({
               lat: data.latitude,
               lng: data.longitude,
-              nama: `${data.latitude.toFixed(4)}, ${data.longitude.toFixed(4)}`
+              nama: data.city || data.region || 'IP Location'
             })
           } else {
             setPosisi({ lat: null, lng: null, nama: 'Aktifkan GPS' })
@@ -212,7 +226,10 @@ export default function Home() {
   // ===== GEOLOKASI KE KOORDINAT =====
   const getKoordinatDariAlamat = async (alamat: string) => {
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(alamat)}&format=json&limit=1`)
+      // Cari alamat dengan embel-embel Bandung (karena lo cuma di Bandung Raya)
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(alamat + ', Bandung')}&format=json&limit=1`
+      )
       const data = await res.json()
       if (data && data.length > 0) {
         return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
