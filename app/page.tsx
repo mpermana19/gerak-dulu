@@ -204,7 +204,7 @@ export default function Home() {
       filtered = data.filter((d: Spot) => d.hari === parseInt(hariFilter))
     }
 
-    filtered = filtered.filter((d: Spot) => d.jam >= jamSekarang)
+    
 
     const posisiLat = posisi.lat
     const posisiLng = posisi.lng
