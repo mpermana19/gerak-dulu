@@ -32,6 +32,14 @@ export default function Home() {
   const [rowsMalam, setRowsMalam] = useState<{ jam: string; lokasi: string; ongkir: string }[]>([])
   const [cariKeyword, setCariKeyword] = useState('')
 
+  // ============== EDIT STATE ==============
+  const [editData, setEditData] = useState<Spot | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editLokasi, setEditLokasi] = useState('')
+  const [editJam, setEditJam] = useState('')
+  const [editOngkir, setEditOngkir] = useState('')
+  const [editHari, setEditHari] = useState('')
+
   // ============== SCROLL KE ATAS OTOMATIS ==============
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -55,39 +63,32 @@ export default function Home() {
 
     const success = async (pos: GeolocationPosition) => {
       const { latitude, longitude } = pos.coords
-      setPosisi(prev => ({ ...prev, lat: latitude, lng: longitude }))
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=16`)
-        const data = await res.json()
-        let nama = 'Lokasi tidak diketahui'
-        if (data.address) {
-          const a = data.address
-          nama = a.road || a.suburb || a.village || a.town || a.city || a.county || a.state || 'Lokasi tidak diketahui'
-        }
-        setPosisi(prev => ({ ...prev, nama }))
-      } catch (e) {
-        setPosisi(prev => ({ ...prev, nama: 'Gagal ambil nama lokasi' }))
-      }
+      
+      // 🔥 SET KOORDINAT LANGSUNG, NAMA PAKAI KOORDINAT
+      setPosisi({
+        lat: latitude,
+        lng: longitude,
+        nama: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+      })
     }
 
     const error = () => {
-      // Fallback IP geolocation
+      // Fallback: IP geolocation
       fetch('https://ipapi.co/json/')
         .then(res => res.json())
         .then(data => {
           if (data.latitude && data.longitude) {
-            setPosisi(prev => ({
-              ...prev,
+            setPosisi({
               lat: data.latitude,
               lng: data.longitude,
-              nama: data.city || data.region || 'Perkiraan lokasi'
-            }))
+              nama: `${data.latitude.toFixed(4)}, ${data.longitude.toFixed(4)}`
+            })
           } else {
-            setPosisi(prev => ({ ...prev, lat: null, lng: null, nama: 'Aktifkan GPS' }))
+            setPosisi({ lat: null, lng: null, nama: 'Aktifkan GPS' })
           }
         })
         .catch(() => {
-          setPosisi(prev => ({ ...prev, lat: null, lng: null, nama: 'Aktifkan GPS' }))
+          setPosisi({ lat: null, lng: null, nama: 'Aktifkan GPS' })
         })
     }
 
@@ -213,7 +214,6 @@ export default function Home() {
   // ===== GEOLOKASI KE KOORDINAT =====
   const getKoordinatDariAlamat = async (alamat: string) => {
     try {
-      // UNIVERSAL: cari alamat asli tanpa paksa kota
       const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(alamat)}&format=json&limit=1`)
       const data = await res.json()
       if (data && data.length > 0) {
@@ -370,6 +370,40 @@ export default function Home() {
     const dataNow = getData()
     setDataStorage(dataNow.filter((d: Spot) => d.id !== id))
     getRekomendasi().then(setRekomendasi)
+  }
+
+  // ============== FUNGSI EDIT ==============
+  const openEditModal = (item: Spot) => {
+    setEditData(item)
+    setEditLokasi(item.lokasi)
+    setEditJam(item.jam)
+    setEditOngkir(item.ongkir.toString())
+    setEditHari(item.hari.toString())
+    setShowEditModal(true)
+  }
+
+  const saveEdit = () => {
+    if (!editData) return
+    if (!editLokasi || !editJam || !editOngkir || parseInt(editOngkir) <= 0) {
+      alert('Isi semua data dengan benar!')
+      return
+    }
+
+    const dataNow = getData()
+    const index = dataNow.findIndex(d => d.id === editData.id)
+    if (index !== -1) {
+      dataNow[index] = {
+        ...dataNow[index],
+        lokasi: editLokasi,
+        jam: bulatkanJam(editJam),
+        ongkir: parseInt(editOngkir),
+        hari: parseInt(editHari)
+      }
+      setDataStorage(dataNow)
+      getRekomendasi().then(setRekomendasi)
+    }
+    setShowEditModal(false)
+    setEditData(null)
   }
 
   // ============== FUNGSI BACKUP ==============
@@ -841,12 +875,134 @@ export default function Home() {
                   <div className="nama" style={{ fontSize: '15px' }}>{bintang} ({count}x) {item.lokasi}</div>
                   <div className="jam" style={{ fontSize: '13px' }}>⏰ {item.jam} 💰 Rp {item.ongkir.toLocaleString()} 📅 {new Date(item.tanggal).toLocaleDateString('id-ID')}</div>
                 </div>
-                <button className="btn-danger" onClick={() => hapusSpot(item.id)} style={{ padding: '6px 12px', fontSize: '14px' }}>🗑️</button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    className="btn-edit" 
+                    onClick={() => openEditModal(item)}
+                    style={{
+                      background: '#2a6bff',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '6px 12px',
+                      fontSize: '13px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ✏️
+                  </button>
+                  <button 
+                    className="btn-danger" 
+                    onClick={() => hapusSpot(item.id)} 
+                    style={{
+                      background: '#ff4444',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '6px 12px',
+                      fontSize: '13px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🗑️
+                  </button>
+                </div>
               </div>
             )
           })
         )}
         <div className="text-muted" style={{ marginTop: 'clamp(10px, 2.5vw, 14px)' }}>Total: {filtered.length} spot</div>
+
+        {/* MODAL EDIT */}
+        {showEditModal && editData && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999,
+            padding: '20px'
+          }}>
+            <div style={{
+              background: '#1a1a2e',
+              borderRadius: '16px',
+              padding: '24px',
+              maxWidth: '400px',
+              width: '100%',
+              border: '1px solid #2a2a4e'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: 'bold' }}>✏️ Edit Spot</h3>
+                <button 
+                  onClick={() => setShowEditModal(false)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#8888aa',
+                    fontSize: '24px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="input-group">
+                <label>Lokasi</label>
+                <input 
+                  value={editLokasi} 
+                  onChange={(e) => setEditLokasi(e.target.value)} 
+                  placeholder="Jl. Cihampelas No. 123" 
+                />
+              </div>
+
+              <div className="input-group">
+                <label>Jam</label>
+                <input 
+                  value={editJam} 
+                  onChange={(e) => setEditJam(formatJamOtomatis(e.target.value))} 
+                  placeholder="1030" 
+                />
+              </div>
+
+              <div className="input-group">
+                <label>Ongkir (Rp)</label>
+                <input 
+                  value={editOngkir} 
+                  onChange={(e) => setEditOngkir(e.target.value)} 
+                  placeholder="15000" 
+                  type="number" 
+                />
+              </div>
+
+              <div className="input-group">
+                <label>Hari</label>
+                <select value={editHari} onChange={(e) => setEditHari(e.target.value)}>
+                  <option value="0">Minggu</option>
+                  <option value="1">Senin</option>
+                  <option value="2">Selasa</option>
+                  <option value="3">Rabu</option>
+                  <option value="4">Kamis</option>
+                  <option value="5">Jumat</option>
+                  <option value="6">Sabtu</option>
+                </select>
+              </div>
+
+              <button 
+                className="btn-primary" 
+                onClick={saveEdit}
+                style={{ width: '100%', marginTop: '8px' }}
+              >
+                💾 Simpan Perubahan
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
