@@ -201,27 +201,18 @@ export default function Home() {
       filtered = data.filter((d: Spot) => d.hari === parseInt(hariFilter))
     }
 
-    const posisiLat = posisi.lat
-    const posisiLng = posisi.lng
-
     const rekomWithDetails: any[] = []
 
     for (const item of filtered) {
       const { bintang, count } = getBintang(item.jam, item.lokasi)
 
-      const coord = await getKoordinatDariAlamat(item.lokasi)
-      let jarak: number | null = null
-      if (coord && posisiLat && posisiLng) {
-        jarak = await hitungJarakOSRM(posisiLat, posisiLng, coord.lat, coord.lng)
-      }
-
       rekomWithDetails.push({
         ...item,
         bintang,
         count,
-        jarak,
-        lat: coord?.lat || null,
-        lng: coord?.lng || null
+        jarak: 0,
+        lat: null,
+        lng: null
       })
     }
 
@@ -366,7 +357,7 @@ export default function Home() {
     loadRekomendasi()
     const interval = setInterval(loadRekomendasi, 60000)
     return () => clearInterval(interval)
-  }, [data, loading, hariFilter, posisi.lat, posisi.lng])
+  }, [data, loading, hariFilter])
 
   const renderHome = () => {
     const utama = rekomendasi.length > 0 ? rekomendasi[0] : null
