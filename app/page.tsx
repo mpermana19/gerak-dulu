@@ -21,6 +21,7 @@ export default function Home() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isInstalled, setIsInstalled] = useState(false)
   const [rekomendasi, setRekomendasi] = useState<any[]>([])
+  const [wakeLock, setWakeLock] = useState<any>(null)
 
   const [halaman, setHalaman] = useState<'home' | 'tambah' | 'malam' | 'kelola' | 'backup' | 'edit'>('home')
   const [editData, setEditData] = useState<Spot | null>(null)
@@ -32,6 +33,30 @@ export default function Home() {
 
   const [rowsMalam, setRowsMalam] = useState<{ jam: string; lokasi: string; ongkir: string }[]>([])
   const [cariKeyword, setCariKeyword] = useState('')
+
+  // ===== WAKE LOCK =====
+  useEffect(() => {
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          const lock = await navigator.wakeLock.request('screen')
+          setWakeLock(lock)
+          console.log('Wake Lock aktif')
+        }
+      } catch (err) {
+        console.log('Wake Lock error:', err)
+      }
+    }
+
+    requestWakeLock()
+
+    return () => {
+      if (wakeLock) {
+        wakeLock.release()
+        console.log('Wake Lock dilepas')
+      }
+    }
+  }, [])
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -421,7 +446,6 @@ export default function Home() {
 
     return (
       <div className="halaman">
-        {/* HEADER + JAM + TOMBOL TAMBAH */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(8px, 2vw, 12px)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px, 2vw, 12px)' }}>
             <h1 style={{ fontSize: 'clamp(20px, 5vw, 26px)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 'clamp(4px, 1vw, 8px)' }}>
@@ -432,7 +456,6 @@ export default function Home() {
           <span style={{ color: '#ff6b00', fontWeight: 700, fontSize: 'clamp(16px, 4vw, 22px)' }}>⏰ {jam}</span>
         </div>
 
-        {/* TOMBOL TAMBAH & MALAM */}
         <div style={{ display: 'flex', gap: 'clamp(8px, 2vw, 12px)', marginBottom: 'clamp(12px, 3vw, 16px)' }}>
           <button className="orange" onClick={() => setHalaman('tambah')} style={{ flex: 1, padding: 'clamp(10px, 2.5vw, 14px)', fontSize: 'clamp(14px, 3.5vw, 18px)' }}>
             ➕ Tambah
@@ -442,13 +465,11 @@ export default function Home() {
           </button>
         </div>
 
-        {/* POSISI */}
         <div className="posisi-bar">
           <span className="label">📍 LOKASI</span>
           <span className="value">{posisi.nama}</span>
         </div>
 
-        {/* FILTER HARI */}
         <div className="filter-grid">
           <button className={hariFilter === 'all' ? 'active' : ''} onClick={() => setHariFilter('all')}>Semua</button>
           {[0, 1, 2, 3, 4, 5, 6].map((h) => (
@@ -458,14 +479,12 @@ export default function Home() {
           ))}
         </div>
 
-        {/* LOADING JARAK */}
         {loadingJarak && (
           <div style={{ textAlign: 'center', padding: '12px', color: '#8888aa' }}>
             <span>⏳ Menghitung jarak real...</span>
           </div>
         )}
 
-        {/* REKOMENDASI UTAMA */}
         <div className="rekom-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className="badge-orange">🎯 REKOMENDASI</span>
@@ -493,7 +512,6 @@ export default function Home() {
           </button>
         </div>
 
-        {/* SPOT LAIN */}
         <div className="card">
           <div className="card-header">
             <span style={{ fontWeight: 600 }}>📋 SPOT LAIN</span>
@@ -514,7 +532,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* TOMBOL BAWAH */}
         <div className="bottom-grid">
           <button onClick={() => setHalaman('kelola')}>📋 Kelola</button>
           <button onClick={() => setHalaman('backup')}>💾 Backup</button>
