@@ -22,7 +22,8 @@ export default function Home() {
   const [isInstalled, setIsInstalled] = useState(false)
   const [rekomendasi, setRekomendasi] = useState<any[]>([])
 
-  const [halaman, setHalaman] = useState<'home' | 'tambah' | 'malam' | 'kelola' | 'backup'>('home')
+  const [halaman, setHalaman] = useState<'home' | 'tambah' | 'malam' | 'kelola' | 'backup' | 'edit'>('home')
+  const [editData, setEditData] = useState<Spot | null>(null)
 
   const [inputLokasi, setInputLokasi] = useState('')
   const [inputJam, setInputJam] = useState('')
@@ -203,7 +204,6 @@ export default function Home() {
       filtered = data.filter((d: Spot) => d.hari === parseInt(hariFilter))
     }
 
-    // Filter jam: hanya yang belum lewat
     filtered = filtered.filter((d: Spot) => d.jam >= jamSekarang)
 
     const posisiLat = posisi.lat
@@ -211,8 +211,12 @@ export default function Home() {
 
     const rekomWithDetails: any[] = []
 
-    for (const item of filtered) {
+    for (let i = 0; i < filtered.length; i++) {
+      const item = filtered[i]
       const { bintang, count } = getBintang(item.jam, item.lokasi)
+
+      // Delay 500ms antar request biar gak kena limit
+      if (i > 0) await new Promise(resolve => setTimeout(resolve, 500))
 
       const coord = await getKoordinatDariAlamat(item.lokasi)
       let jarak: number | null = null
@@ -231,9 +235,9 @@ export default function Home() {
     }
 
     rekomWithDetails.sort((a, b) => {
-      if (a.jarak !== null && b.jarak !== null && a.jarak !== b.jarak) {
-        return a.jarak - b.jarak
-      }
+      const jarakA = a.jarak ?? 9999
+      const jarakB = b.jarak ?? 9999
+      if (jarakA !== jarakB) return jarakA - jarakB
       const bintangA = a.bintang.length
       const bintangB = b.bintang.length
       if (bintangA !== bintangB) return bintangB - bintangA
@@ -313,6 +317,45 @@ export default function Home() {
     if (!confirm('Hapus spot ini?')) return
     const dataNow = getData()
     setDataStorage(dataNow.filter((d: Spot) => d.id !== id))
+    getRekomendasi().then(setRekomendasi)
+  }
+
+  const editSpot = (id: number) => {
+    const item = data.find(d => d.id === id)
+    if (item) {
+      setEditData(item)
+      setInputLokasi(item.lokasi)
+      setInputJam(item.jam)
+      setInputOngkir(item.ongkir.toString())
+      setInputHari(item.hari.toString())
+      setHalaman('edit')
+    }
+  }
+
+  const simpanEdit = () => {
+    if (!editData) return
+    if (!inputLokasi || !inputJam || !inputOngkir || parseInt(inputOngkir) <= 0) {
+      alert('Isi semua data dengan benar!')
+      return
+    }
+    const dataNow = getData()
+    const index = dataNow.findIndex(d => d.id === editData.id)
+    if (index !== -1) {
+      dataNow[index] = {
+        ...dataNow[index],
+        lokasi: inputLokasi,
+        jam: bulatkanJam(inputJam),
+        ongkir: parseInt(inputOngkir),
+        hari: inputHari !== '' ? parseInt(inputHari) : new Date().getDay()
+      }
+      setDataStorage(dataNow)
+    }
+    setEditData(null)
+    setInputLokasi('')
+    setInputJam('')
+    setInputOngkir('')
+    setInputHari('')
+    setHalaman('home')
     getRekomendasi().then(setRekomendasi)
   }
 
@@ -667,12 +710,73 @@ export default function Home() {
                   <div className="nama">{bintang} ({count}x) {item.lokasi}</div>
                   <div className="jam">⏰ {item.jam} 💰 Rp {item.ongkir.toLocaleString()} 📅 {new Date(item.tanggal).toLocaleDateString('id-ID')}</div>
                 </div>
-                <button className="btn-danger" onClick={() => hapusSpot(item.id)}>🗑️</button>
+                <div className="kanan" style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    className="btn-edit" 
+                    onClick={() => editSpot(item.id)}
+                    style={{
+                      background: '#2a6bff',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ✏️ Edit
+                  </button>
+                  <button className="btn-danger" onClick={() => hapusSpot(item.id)}>🗑️</button>
+                </div>
               </div>
             )
           })
         )}
         <div className="text-muted" style={{ marginTop: 'clamp(10px, 2.5vw, 14px)' }}>Total: {filtered.length} spot</div>
+      </div>
+    )
+  }
+
+  const renderEdit = () => {
+    if (!editData) return null
+    return (
+      <div className="halaman">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(16px, 4vw, 24px)' }}>
+          <h2 style={{ fontSize: 'clamp(20px, 5vw, 26px)', fontWeight: 700 }}>✏️ Edit Spot</h2>
+          <button className="btn-close" onClick={() => { setHalaman('home'); setEditData(null); setInputLokasi(''); setInputJam(''); setInputOngkir(''); setInputHari('') }}>✕</button>
+        </div>
+        <div className="input-group">
+          <label>Lokasi</label>
+          <input 
+            value={inputLokasi} 
+            onChange={(e) => setInputLokasi(e.target.value)} 
+            placeholder="Jl. Cihampelas No. 123" 
+          />
+        </div>
+        <div className="input-group">
+          <label>Jam</label>
+          <input 
+            value={inputJam} 
+            onChange={(e) => setInputJam(formatJamOtomatis(e.target.value))} 
+            placeholder="1030" 
+          />
+        </div>
+        <div className="input-group">
+          <label>Ongkir (Rp)</label>
+          <input value={inputOngkir} onChange={(e) => setInputOngkir(e.target.value)} placeholder="15000" type="number" />
+        </div>
+        <div className="input-group">
+          <label>Hari</label>
+          <select value={inputHari} onChange={(e) => setInputHari(e.target.value)}>
+            <option value="">Otomatis (hari ini)</option>
+            <option value="0">Minggu</option><option value="1">Senin</option>
+            <option value="2">Selasa</option><option value="3">Rabu</option>
+            <option value="4">Kamis</option><option value="5">Jumat</option>
+            <option value="6">Sabtu</option>
+          </select>
+        </div>
+        <button className="btn-primary" onClick={simpanEdit}>💾 Simpan Perubahan</button>
       </div>
     )
   }
@@ -707,6 +811,7 @@ export default function Home() {
         {halaman === 'tambah' && renderTambah()}
         {halaman === 'malam' && renderMalam()}
         {halaman === 'kelola' && renderKelola()}
+        {halaman === 'edit' && renderEdit()}
         {halaman === 'backup' && renderBackup()}
       </div>
 
