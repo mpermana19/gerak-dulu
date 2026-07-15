@@ -532,7 +532,7 @@ export default function Home() {
           )}
         </div>
 
-        <div className="bottom-grid">
+        <div className="bottom-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'clamp(8px, 2vw, 12px)' }}>
           <button onClick={() => setHalaman('kelola')}>📋 Kelola</button>
           <button onClick={() => setHalaman('backup')}>💾 Backup</button>
           <button onClick={() => window.location.reload()}>📍 Refresh</button>
