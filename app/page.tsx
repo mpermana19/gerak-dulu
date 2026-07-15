@@ -21,7 +21,6 @@ export default function Home() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null)
   const [isInstalled, setIsInstalled] = useState(false)
   const [rekomendasi, setRekomendasi] = useState<any[]>([])
-  const [wakeLock, setWakeLock] = useState<any>(null)
 
   const [halaman, setHalaman] = useState<'home' | 'tambah' | 'malam' | 'kelola' | 'backup' | 'edit'>('home')
   const [editData, setEditData] = useState<Spot | null>(null)
@@ -33,30 +32,6 @@ export default function Home() {
 
   const [rowsMalam, setRowsMalam] = useState<{ jam: string; lokasi: string; ongkir: string }[]>([])
   const [cariKeyword, setCariKeyword] = useState('')
-
-  // ===== WAKE LOCK =====
-  useEffect(() => {
-    const requestWakeLock = async () => {
-      try {
-        if ('wakeLock' in navigator) {
-          const lock = await navigator.wakeLock.request('screen')
-          setWakeLock(lock)
-          console.log('Wake Lock aktif')
-        }
-      } catch (err) {
-        console.log('Wake Lock error:', err)
-      }
-    }
-
-    requestWakeLock()
-
-    return () => {
-      if (wakeLock) {
-        wakeLock.release()
-        console.log('Wake Lock dilepas')
-      }
-    }
-  }, [])
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
