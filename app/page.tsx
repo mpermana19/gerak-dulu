@@ -1,4 +1,3 @@
-```typescript
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -54,6 +53,17 @@ export default function Home() {
     if (saved) setData(JSON.parse(saved))
     setLoading(false)
 
+    // Ambil posisi awal
+    ambilPosisi()
+    
+    // Update posisi tiap 60 detik
+    const intervalGPS = setInterval(ambilPosisi, 60000)
+    
+    return () => clearInterval(intervalGPS)
+  }, [])
+
+  // Fungsi ambil posisi
+  const ambilPosisi = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
@@ -75,7 +85,7 @@ export default function Home() {
         () => setPosisi(prev => ({ ...prev, nama: 'Izin Lokasi' }))
       )
     }
-  }, [])
+  }
 
   // ============== UPDATE JAM ==============
   useEffect(() => {
@@ -210,14 +220,13 @@ export default function Home() {
     const now = new Date()
     const jamSekarang = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
-    // Filter hari (tetap)
     let filtered = data
     if (hariFilter !== 'all') {
       filtered = data.filter((d: Spot) => d.hari === parseInt(hariFilter))
     }
 
-    // Filter jam: cuma yang jamnya >= jam sekarang (belum lewat)
-    filtered = filtered.filter((d: Spot) => d.jam >= jamSekarang)
+    // Filter jam: dari jam sekarang sampai 23:59
+    filtered = filtered.filter((d: Spot) => d.jam >= jamSekarang && d.jam <= '23:59')
 
     const posisiLat = posisi.lat
     const posisiLng = posisi.lng
@@ -394,37 +403,60 @@ export default function Home() {
 
   // ============== RENDER HOME ==============
   const renderHome = () => {
-    const utama = rekomendasi.length > 0 ? rekomendasi[0] : null
-    const lain = rekomendasi.slice(1)
-
-    const totalSpot = data.length
-    const countMap: Record<string, { lokasi: string; count: number }> = {}
-    for (const item of data) {
-      const key = item.lokasi.toLowerCase()
-      if (!countMap[key]) countMap[key] = { lokasi: item.lokasi, count: 0 }
-      countMap[key].count++
-    }
-    let favorit = '-'
-    let maxCount = 0
-    for (const key in countMap) {
-      if (countMap[key].count > maxCount) {
-        maxCount = countMap[key].count
-        favorit = countMap[key].lokasi
-      }
-    }
-    const totalOngkir = data.reduce((sum, d) => sum + d.ongkir, 0)
-    const rataOngkir = data.length > 0 ? Math.round(totalOngkir / data.length) : 0
-    const maxOngkir = data.length > 0 ? Math.max(...data.map(d => d.ongkir)) : 0
+    const utama = rekomendasi.length > 0 ? rekomendasi[0] : null // TOP 1
+    const lain = rekomendasi.slice(1) // sisanya
 
     return (
       <div className="halaman">
         {/* HEADER */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(12px, 3vw, 16px)' }}>
-          <h1 style={{ fontSize: 'clamp(22px, 5.5vw, 30px)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 'clamp(6px, 1.5vw, 10px)' }}>
-            <img src="/favicon.ico" alt="logo" style={{ width: 'clamp(28px, 7vw, 36px)', height: 'clamp(28px, 7vw, 36px)' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(8px, 2vw, 12px)' }}>
+          <h1 style={{ fontSize: 'clamp(20px, 5vw, 26px)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 'clamp(4px, 1.5vw, 8px)' }}>
+            <img src="/favicon.ico" alt="logo" style={{ width: 'clamp(24px, 6vw, 32px)', height: 'clamp(24px, 6vw, 32px)' }} />
             <span>GERAK <span style={{ color: '#ff6b00' }}>DULU</span></span>
           </h1>
-          <span style={{ color: '#ff6b00', fontWeight: 700, fontSize: 'clamp(18px, 4.5vw, 24px)' }}>⏰ {jam}</span>
+          <span style={{ color: '#ff6b00', fontWeight: 700, fontSize: 'clamp(16px, 4vw, 22px)' }}>⏰ {jam}</span>
+        </div>
+
+        {/* TOMBOL TAMBAH & MALAM */}
+        <div style={{ 
+          display: 'flex', 
+          gap: 'clamp(8px, 2vw, 12px)', 
+          marginBottom: 'clamp(10px, 2.5vw, 14px)',
+          width: '100%'
+        }}>
+          <button 
+            onClick={() => setHalaman('tambah')} 
+            style={{ 
+              flex: 1,
+              background: '#ff6b00', 
+              color: '#fff', 
+              border: 'none', 
+              borderRadius: '10px', 
+              padding: 'clamp(8px, 2vw, 12px)',
+              fontWeight: 'bold',
+              fontSize: 'clamp(13px, 3vw, 16px)',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(255,107,0,0.2)'
+            }}
+          >
+            ➕ Tambah
+          </button>
+          <button 
+            onClick={() => setHalaman('malam')} 
+            style={{ 
+              flex: 1,
+              background: '#2a2a4e', 
+              color: '#fff', 
+              border: '1px solid #3a3a5e', 
+              borderRadius: '10px', 
+              padding: 'clamp(8px, 2vw, 12px)',
+              fontWeight: 'bold',
+              fontSize: 'clamp(13px, 3vw, 16px)',
+              cursor: 'pointer'
+            }}
+          >
+            🌙 Malam
+          </button>
         </div>
 
         {/* POSISI */}
@@ -450,32 +482,44 @@ export default function Home() {
           </div>
         )}
 
-        {/* REKOMENDASI UTAMA */}
-        <div className="rekom-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span className="badge-orange">🎯 REKOMENDASI</span>
-            <span className="bintang">{utama ? utama.bintang : '⭐'}</span>
+        {/* REKOMENDASI TOP 1 */}
+        <div className="rekom-card" style={{ padding: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span className="badge-orange" style={{ fontSize: '14px', padding: '4px 12px' }}>🎯 REKOMENDASI</span>
+            <span className="bintang" style={{ fontSize: '20px' }}>{utama ? utama.bintang : '⭐'}</span>
           </div>
-          <div className="lokasi" style={{ fontSize: 'clamp(18px, 4.5vw, 24px)' }}>
-            {utama ? utama.lokasi : 'Belum ada data'}
-          </div>
-          <div className="detail">
-            <span>⏰ {utama ? utama.jam : '--:--'}</span>
-            <span>🛵 {utama ? `${utama.count}x dapet` : '-'}</span>
-            <span>📏 {utama && utama.jarak !== null ? `${utama.jarak} km` : '?'}</span>
-            <span>💰 {utama ? `Rp ${utama.ongkir.toLocaleString()}` : '-'}</span>
-          </div>
-          <button 
-            className="btn-primary" 
-            onClick={() => {
-              if (utama) {
-                const searchQuery = encodeURIComponent(utama.lokasi)
-                window.open(`https://www.google.com/maps/dir/?api=1&destination=${searchQuery}&travelmode=driving`, '_blank')
-              }
-            }}
-          >
-            🚀 NAVIGASI KE TITIK INI
-          </button>
+          {!utama ? (
+            <div style={{ color: '#8888aa', textAlign: 'center', padding: '16px' }}>
+              Tidak ada rekomendasi
+            </div>
+          ) : (
+            <>
+              <div className="lokasi" style={{ fontSize: 'clamp(18px, 4.5vw, 22px)', fontWeight: 600, marginBottom: '8px' }}>
+                {utama.lokasi}
+              </div>
+              <div className="detail" style={{ fontSize: '14px', gap: '12px' }}>
+                <span>⏰ {utama.jam}</span>
+                <span>🛵 {utama.count}x dapet</span>
+                <span>📏 {utama.jarak !== null ? `${utama.jarak} km` : '?'}</span>
+                <span>💰 Rp {utama.ongkir.toLocaleString()}</span>
+              </div>
+              <button 
+                className="btn-primary" 
+                onClick={() => {
+                  const searchQuery = encodeURIComponent(utama.lokasi)
+                  window.open(`https://www.google.com/maps/dir/?api=1&destination=${searchQuery}&travelmode=driving`, '_blank')
+                }}
+                style={{ 
+                  marginTop: '12px', 
+                  padding: '8px 16px', 
+                  fontSize: '14px',
+                  width: '100%'
+                }}
+              >
+                🚀 NAVIGASI
+              </button>
+            </>
+          )}
         </div>
 
         {/* SPOT LAIN */}
@@ -488,41 +532,63 @@ export default function Home() {
             <div style={{ color: '#8888aa', textAlign: 'center', padding: 'clamp(16px, 4vw, 24px)' }}>Tidak ada spot lain.</div>
           ) : (
             lain.map((item) => (
-              <div key={item.id} className="spot-item">
+              <div key={item.id} className="spot-item" style={{ padding: '10px 0' }}>
                 <div className="kiri">
-                  <div className="nama">{item.bintang} {item.lokasi}</div>
-                  <div className="jam">⏰ {item.jam} 💰 Rp {item.ongkir.toLocaleString()} ({item.count}x) 📏 {item.jarak !== null ? `${item.jarak} km` : '?'}</div>
+                  <div className="nama" style={{ fontSize: '15px' }}>{item.bintang} {item.lokasi}</div>
+                  <div className="jam" style={{ fontSize: '13px' }}>⏰ {item.jam} 💰 Rp {item.ongkir.toLocaleString()} ({item.count}x) 📏 {item.jarak !== null ? `${item.jarak} km` : '?'}</div>
                 </div>
-                <div className="kanan">{item.count}x</div>
+                <div className="kanan" style={{ fontSize: '13px' }}>{item.count}x</div>
               </div>
             ))
           )}
         </div>
 
-        {/* STATISTIK */}
-        <div className="card">
-          <div className="card-header"><span style={{ fontWeight: 600 }}>📊 STATISTIK</span></div>
-          <div className="stat-grid">
-            <div className="stat-item"><div className="angka">{totalSpot}</div><div className="label">Total Spot</div></div>
-            <div className="stat-item"><div className="angka">{favorit}</div><div className="label">Spot Favorit</div></div>
-            <div className="stat-item"><div className="angka">Rp{rataOngkir.toLocaleString()}</div><div className="label">Rata-rata Ongkir</div></div>
-            <div className="stat-item"><div className="angka">Rp{maxOngkir.toLocaleString()}</div><div className="label">Ongkir Tertinggi</div></div>
-          </div>
-        </div>
-
-        {/* TOMBOL BAWAH - GRID 6 */}
+        {/* 3 TOMBOL ATAS */}
         <div className="bottom-grid">
-          <button className="orange" onClick={() => setHalaman('tambah')}>➕ Tambah</button>
-          <button onClick={() => setHalaman('malam')}>🌙 Malam</button>
           <button onClick={() => setHalaman('kelola')}>📋 Kelola</button>
           <button onClick={() => setHalaman('backup')}>💾 Backup</button>
           <button onClick={() => window.location.reload()}>📍 Refresh</button>
-          {!isInstalled ? (
-            <button className="orange" onClick={handleInstall}>📲 Install</button>
-          ) : (
-            <button style={{ opacity: 0.4, cursor: 'default', background: '#2a2a3e', color: '#888' }}>✅ Terinstall</button>
-          )}
         </div>
+
+        {/* TOMBOL INSTALL LEBAR */}
+        {!isInstalled ? (
+          <button 
+            onClick={handleInstall} 
+            style={{ 
+              width: '100%',
+              background: '#ff6b00', 
+              color: '#fff', 
+              border: 'none', 
+              borderRadius: '12px', 
+              padding: 'clamp(14px, 3.5vw, 18px)',
+              fontWeight: 'bold',
+              fontSize: 'clamp(16px, 4vw, 20px)',
+              cursor: 'pointer',
+              marginTop: 'clamp(8px, 2vw, 12px)',
+              boxShadow: '0 4px 12px rgba(255,107,0,0.3)'
+            }}
+          >
+            📲 Install PWA
+          </button>
+        ) : (
+          <button 
+            style={{ 
+              width: '100%',
+              opacity: 0.4, 
+              cursor: 'default', 
+              background: '#2a2a3e', 
+              color: '#888',
+              border: 'none',
+              borderRadius: '12px',
+              padding: 'clamp(14px, 3.5vw, 18px)',
+              fontWeight: 'bold',
+              fontSize: 'clamp(16px, 4vw, 20px)',
+              marginTop: 'clamp(8px, 2vw, 12px)'
+            }}
+          >
+            ✅ Terinstall
+          </button>
+        )}
       </div>
     )
   }
@@ -693,12 +759,12 @@ export default function Home() {
           filtered.map((item) => {
             const { bintang, count } = getBintang(item.jam, item.lokasi)
             return (
-              <div key={item.id} className="spot-item">
+              <div key={item.id} className="spot-item" style={{ padding: '10px 0' }}>
                 <div className="kiri">
-                  <div className="nama">{bintang} ({count}x) {item.lokasi}</div>
-                  <div className="jam">⏰ {item.jam} 💰 Rp {item.ongkir.toLocaleString()} 📅 {new Date(item.tanggal).toLocaleDateString('id-ID')}</div>
+                  <div className="nama" style={{ fontSize: '15px' }}>{bintang} ({count}x) {item.lokasi}</div>
+                  <div className="jam" style={{ fontSize: '13px' }}>⏰ {item.jam} 💰 Rp {item.ongkir.toLocaleString()} 📅 {new Date(item.tanggal).toLocaleDateString('id-ID')}</div>
                 </div>
-                <button className="btn-danger" onClick={() => hapusSpot(item.id)}>🗑️</button>
+                <button className="btn-danger" onClick={() => hapusSpot(item.id)} style={{ padding: '6px 12px', fontSize: '14px' }}>🗑️</button>
               </div>
             )
           })
@@ -762,4 +828,3 @@ export default function Home() {
     </main>
   )
 }
-```
