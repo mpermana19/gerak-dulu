@@ -196,15 +196,10 @@ export default function Home() {
 
     setLoadingJarak(true)
 
-    const now = new Date()
-    const jamSekarang = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-
     let filtered = data
     if (hariFilter !== 'all') {
       filtered = data.filter((d: Spot) => d.hari === parseInt(hariFilter))
     }
-
-    
 
     const posisiLat = posisi.lat
     const posisiLng = posisi.lng
@@ -726,4 +721,4 @@ export default function Home() {
       </div>
     </main>
   )
-} 
+}
