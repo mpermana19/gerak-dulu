@@ -62,7 +62,7 @@ export default function Home() {
         let nama = 'Lokasi tidak diketahui'
         if (data.address) {
           const a = data.address
-          nama = a.road || a.suburb || a.village || a.town || a.city || 'Lokasi tidak diketahui'
+          nama = a.road || a.suburb || a.village || a.town || a.city || a.county || a.state || 'Lokasi tidak diketahui'
         }
         setPosisi(prev => ({ ...prev, nama }))
       } catch (e) {
@@ -71,7 +71,24 @@ export default function Home() {
     }
 
     const error = () => {
-      setPosisi(prev => ({ ...prev, lat: null, lng: null, nama: 'Aktifkan GPS & izinkan lokasi' }))
+      // Fallback IP geolocation
+      fetch('https://ipapi.co/json/')
+        .then(res => res.json())
+        .then(data => {
+          if (data.latitude && data.longitude) {
+            setPosisi(prev => ({
+              ...prev,
+              lat: data.latitude,
+              lng: data.longitude,
+              nama: data.city || data.region || 'Perkiraan lokasi'
+            }))
+          } else {
+            setPosisi(prev => ({ ...prev, lat: null, lng: null, nama: 'Aktifkan GPS' }))
+          }
+        })
+        .catch(() => {
+          setPosisi(prev => ({ ...prev, lat: null, lng: null, nama: 'Aktifkan GPS' }))
+        })
     }
 
     if (navigator.geolocation) {
@@ -81,10 +98,9 @@ export default function Home() {
         maximumAge: 0
       })
     } else {
-      setPosisi(prev => ({ ...prev, lat: null, lng: null, nama: 'Browser tidak support GPS' }))
+      error()
     }
 
-    // Update tiap 60 detik
     const intervalGPS = setInterval(() => {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(success, error, {
@@ -197,7 +213,7 @@ export default function Home() {
   // ===== GEOLOKASI KE KOORDINAT =====
   const getKoordinatDariAlamat = async (alamat: string) => {
     try {
-      // 🔥 HAPUS paksaan ', Bandung' - cari alamat asli
+      // UNIVERSAL: cari alamat asli tanpa paksa kota
       const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(alamat)}&format=json&limit=1`)
       const data = await res.json()
       if (data && data.length > 0) {
@@ -227,7 +243,6 @@ export default function Home() {
   const getRekomendasi = async () => {
     if (data.length === 0) return []
     
-    // Cek GPS
     if (!posisi.lat || !posisi.lng) {
       return []
     }
@@ -268,7 +283,6 @@ export default function Home() {
       })
     }
 
-    // Urutan: jarak terdekat → bintang tertinggi → ongkir tertinggi
     rekomWithDetails.sort((a, b) => {
       if (a.jarak !== null && b.jarak !== null && a.jarak !== b.jarak) {
         return a.jarak - b.jarak
