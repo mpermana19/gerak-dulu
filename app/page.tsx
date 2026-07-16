@@ -222,10 +222,8 @@ export default function Home() {
   }
 
   // ===== GEOLOKASI KE KOORDINAT =====
-  // ===== GEOLOKASI KE KOORDINAT =====
   const getKoordinatDariAlamat = async (alamat: string) => {
     try {
-      // 🔥 NO MORE BANDUNG FORCE
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(alamat)}&format=json&limit=1`
       )
@@ -266,6 +264,12 @@ export default function Home() {
     const now = new Date()
     const jamSekarang = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
+    const getSelisihMenit = (jamSpot: string) => {
+      const [h1, m1] = jamSekarang.split(':').map(Number)
+      const [h2, m2] = jamSpot.split(':').map(Number)
+      return (h2 * 60 + m2) - (h1 * 60 + m1)
+    }
+
     let filtered = data
     if (hariFilter !== 'all') {
       filtered = data.filter((d: Spot) => d.hari === parseInt(hariFilter))
@@ -273,42 +277,97 @@ export default function Home() {
 
     filtered = filtered.filter((d: Spot) => d.jam >= jamSekarang && d.jam <= '23:59')
 
-    const posisiLat = posisi.lat
-    const posisiLng = posisi.lng
-
-    const rekomWithDetails: any[] = []
-
-    for (const item of filtered) {
-      const { bintang, count } = getBintang(item.jam, item.lokasi)
-
-      const coord = await getKoordinatDariAlamat(item.lokasi)
-      let jarak: number | null = null
-      if (coord && posisiLat && posisiLng) {
-        jarak = await hitungJarakOSRM(posisiLat, posisiLng, coord.lat, coord.lng)
-      }
-
-      rekomWithDetails.push({
-        ...item,
-        bintang,
-        count,
-        jarak,
-        lat: coord?.lat || null,
-        lng: coord?.lng || null
+    // ===== REKOMENDASI: cari progresif dari 1 jam =====
+    const cariDenganBatas = (batasMenit: number) => {
+      return filtered.filter((d: Spot) => {
+        const selisih = getSelisihMenit(d.jam)
+        return selisih >= 0 && selisih <= batasMenit
       })
     }
 
+    let hasilRekomendasi: Spot[] = []
+    const batasWaktu = [60, 120, 180, 240, 360, 720] // 1j, 2j, 3j, 4j, 6j, 12j
+
+    for (const batas of batasWaktu) {
+      const hasil = cariDenganBatas(batas)
+      if (hasil.length > 0) {
+        hasilRekomendasi = hasil
+        break
+      }
+    }
+
+    if (hasilRekomendasi.length === 0) {
+      hasilRekomendasi = filtered
+    }
+
+    const posisiLat = posisi.lat
+    const posisiLng = posisi.lng
+
+    const prosesSpot = async (spots: Spot[]) => {
+      const results: any[] = []
+      for (const item of spots) {
+        const { bintang, count } = getBintang(item.jam, item.lokasi)
+
+        const coord = await getKoordinatDariAlamat(item.lokasi)
+        let jarak: number | null = null
+        if (coord && posisiLat && posisiLng) {
+          jarak = await hitungJarakOSRM(posisiLat, posisiLng, coord.lat, coord.lng)
+        }
+
+        const selisihMenit = getSelisihMenit(item.jam)
+        const selisihJam = Math.floor(selisihMenit / 60)
+        const selisihSisaMenit = selisihMenit % 60
+        const selisihText = selisihJam > 0 ? `${selisihJam}j ${selisihSisaMenit}m` : `${selisihSisaMenit}m`
+
+        results.push({
+          ...item,
+          bintang,
+          count,
+          jarak,
+          lat: coord?.lat || null,
+          lng: coord?.lng || null,
+          selisihMenit,
+          selisihText
+        })
+      }
+      return results
+    }
+
+    const rekomWithDetails = await prosesSpot(hasilRekomendasi)
+    
+    // Sorting rekomendasi: jarak terdekat (tetap prioritas)
     rekomWithDetails.sort((a, b) => {
       if (a.jarak !== null && b.jarak !== null && a.jarak !== b.jarak) {
         return a.jarak - b.jarak
       }
-      const bintangA = a.bintang.length
-      const bintangB = b.bintang.length
-      if (bintangA !== bintangB) return bintangB - bintangA
-      return b.ongkir - a.ongkir
+      if (a.bintang.length !== b.bintang.length) {
+        return b.bintang.length - a.bintang.length
+      }
+      return a.ongkir - b.ongkir
+    })
+
+    // Rekomendasi = ambil paling atas (jarak terdekat dari GPS)
+    const rekom = rekomWithDetails.length > 0 ? [rekomWithDetails[0]] : []
+
+    // ===== SPOT LAIN: semua filtered, exclude rekomendasi =====
+    const spotLainSpots = filtered.filter(
+      item => !rekom.some(r => r.id === item.id)
+    )
+    const spotLainWithDetails = await prosesSpot(spotLainSpots)
+
+    // Sorting spot lain: selisih waktu tercepat (bukan jarak)
+    spotLainWithDetails.sort((a, b) => {
+      if (a.selisihMenit !== b.selisihMenit) {
+        return a.selisihMenit - b.selisihMenit
+      }
+      if (a.jarak !== null && b.jarak !== null && a.jarak !== b.jarak) {
+        return a.jarak - b.jarak
+      }
+      return a.ongkir - b.ongkir
     })
 
     setLoadingJarak(false)
-    return rekomWithDetails
+    return [...rekom, ...spotLainWithDetails]
   }
 
   const hariNama = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
@@ -324,7 +383,7 @@ export default function Home() {
     const dataNow = getData()
     dataNow.push({
       id: getNextId(dataNow),
-      lokasi: inputLokasi, // 🔥 No more Bandung force
+      lokasi: inputLokasi,
       jam: jam,
       ongkir: parseInt(inputOngkir),
       hari: hari,
@@ -363,7 +422,7 @@ export default function Home() {
       const jam = bulatkanJam(row.jam)
       dataNow.push({
         id: getNextId(dataNow),
-        lokasi: row.lokasi, // 🔥 No more Bandung force
+        lokasi: row.lokasi,
         jam: jam,
         ongkir: parseInt(row.ongkir),
         hari: hari,
@@ -408,7 +467,7 @@ export default function Home() {
     if (index !== -1) {
       dataNow[index] = {
         ...dataNow[index],
-        lokasi: editLokasi, // 🔥 No more Bandung force
+        lokasi: editLokasi,
         jam: bulatkanJam(editJam),
         ongkir: parseInt(editOngkir),
         hari: parseInt(editHari)
@@ -621,6 +680,7 @@ export default function Home() {
                 </div>
                 <div className="detail" style={{ fontSize: '14px', gap: '12px' }}>
                   <span>⏰ {utama.jam}</span>
+                  <span>⏳ {utama.selisihText} lagi</span>
                   <span>🛵 {utama.count}x dapet</span>
                   <span>📏 {utama.jarak !== null ? `${utama.jarak} km` : '?'}</span>
                   <span>💰 Rp {utama.ongkir.toLocaleString()}</span>
@@ -659,7 +719,12 @@ export default function Home() {
                 <div key={item.id} className="spot-item" style={{ padding: '10px 0' }}>
                   <div className="kiri">
                     <div className="nama" style={{ fontSize: '15px' }}>{item.bintang} {item.lokasi}</div>
-                    <div className="jam" style={{ fontSize: '13px' }}>⏰ {item.jam} 💰 Rp {item.ongkir.toLocaleString()} ({item.count}x) 📏 {item.jarak !== null ? `${item.jarak} km` : '?'}</div>
+                    <div className="jam" style={{ fontSize: '13px' }}>
+                      ⏰ {item.jam} 
+                      ⏳ {item.selisihText} lagi
+                      💰 Rp {item.ongkir.toLocaleString()} ({item.count}x) 
+                      📏 {item.jarak !== null ? `${item.jarak} km` : '?'}
+                    </div>
                   </div>
                   <div className="kanan" style={{ fontSize: '13px' }}>{item.count}x</div>
                 </div>
