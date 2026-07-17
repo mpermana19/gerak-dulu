@@ -56,6 +56,11 @@ export default function Home() {
   const [showSaran, setShowSaran] = useState(false)
   const [isLoadingSaran, setIsLoadingSaran] = useState(false)
 
+  // ============== AUTOCOMPLETE EDIT STATE ==============
+  const [saranLokasiEdit, setSaranLokasiEdit] = useState<any[]>([])
+  const [showSaranEdit, setShowSaranEdit] = useState(false)
+  const [isLoadingSaranEdit, setIsLoadingSaranEdit] = useState(false)
+
   // ============== RESET PAGE SAAT SEARCH ==============
   useEffect(() => {
     setCurrentPage(1)
@@ -145,6 +150,34 @@ export default function Home() {
     setIsLoadingSaran(false)
   }
 
+  // ============== AUTOCOMPLETE EDIT FUNCTION ==============
+  const cariSaranLokasiEdit = async (query: string) => {
+    if (query.length < 3) {
+      setSaranLokasiEdit([])
+      setShowSaranEdit(false)
+      return
+    }
+
+    setIsLoadingSaranEdit(true)
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&addressdetails=1`
+      )
+      const data = await res.json()
+      if (data && data.length > 0) {
+        setSaranLokasiEdit(data)
+        setShowSaranEdit(true)
+      } else {
+        setSaranLokasiEdit([])
+        setShowSaranEdit(false)
+      }
+    } catch (e) {
+      setSaranLokasiEdit([])
+      setShowSaranEdit(false)
+    }
+    setIsLoadingSaranEdit(false)
+  }
+
   // ============== DEBOUNCE ==============
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -159,12 +192,34 @@ export default function Home() {
     return () => clearTimeout(timer)
   }, [inputLokasi])
 
+  // ============== DEBOUNCE EDIT ==============
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (editLokasi.trim().length >= 3) {
+        cariSaranLokasiEdit(editLokasi)
+      } else {
+        setSaranLokasiEdit([])
+        setShowSaranEdit(false)
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [editLokasi])
+
   // ============== PILIH SARAN ==============
   const pilihSaran = (item: any) => {
     const displayName = item.display_name || item.name || ''
     setInputLokasi(displayName)
     setSaranLokasi([])
     setShowSaran(false)
+  }
+
+  // ============== PILIH SARAN EDIT ==============
+  const pilihSaranEdit = (item: any) => {
+    const displayName = item.display_name || item.name || ''
+    setEditLokasi(displayName)
+    setSaranLokasiEdit([])
+    setShowSaranEdit(false)
   }
 
   useEffect(() => {
@@ -995,6 +1050,20 @@ export default function Home() {
     const gpsAktif = posisi.lat !== null && posisi.lng !== null
     const totalSpot = data.length
 
+    const bottomButtonStyle = {
+      flex: 1,
+      minWidth: '60px',
+      background: '#1a1a2e',
+      color: '#fff',
+      border: '1px solid #2a2a3e',
+      borderRadius: '10px',
+      padding: 'clamp(8px, 2vw, 12px)',
+      fontSize: 'clamp(12px, 2.5vw, 14px)',
+      fontWeight: 'bold',
+      cursor: 'pointer',
+      textAlign: 'center' as const
+    }
+
     return (
       <div className="halaman">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'clamp(8px, 2vw, 12px)' }}>
@@ -1180,19 +1249,25 @@ export default function Home() {
           </div>
         )}
 
-        <div className="bottom-grid">
+        <div style={{
+          display: 'flex',
+          gap: '8px',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          marginTop: 'clamp(12px, 2.5vw, 16px)'
+        }}>
           <button onClick={() => {
             setHalaman('statistik')
             window.history.pushState(null, '', window.location.href)
-          }}>📊 Statistik</button>
+          }} style={bottomButtonStyle}>📊 Statistik</button>
           <button onClick={() => {
             setHalaman('kelola')
             window.history.pushState(null, '', window.location.href)
-          }}>📋 Kelola</button>
+          }} style={bottomButtonStyle}>📋 Kelola</button>
           <button onClick={() => {
             setHalaman('backup')
             window.history.pushState(null, '', window.location.href)
-          }}>💾 Backup</button>
+          }} style={bottomButtonStyle}>💾 Backup</button>
         </div>
       </div>
     )
@@ -1313,7 +1388,6 @@ export default function Home() {
           }}>✕</button>
         </div>
 
-        {/* TOMBOL DI ATAS */}
         <div style={{
           display: 'flex',
           gap: '8px',
@@ -1445,7 +1519,6 @@ export default function Home() {
           })
         )}
 
-        {/* PAGINATION */}
         {totalPages > 1 && (
           <div style={{
             display: 'flex',
@@ -1500,7 +1573,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* MODAL EDIT - FIXED DI TENGAH */}
+        {/* MODAL EDIT - FIXED DI TENGAH DENGAN AUTOCOMPLETE */}
         {showEditModal && editData && (
           <div style={{
             position: 'fixed',
@@ -1547,13 +1620,56 @@ export default function Home() {
                 </button>
               </div>
 
-              <div className="input-group">
+              <div className="input-group" style={{ position: 'relative' }}>
                 <label>Lokasi (alamat + kota)</label>
                 <input 
                   value={editLokasi} 
                   onChange={(e) => setEditLokasi(e.target.value)} 
                   placeholder="Jl. Mesjid, Cimahi" 
+                  autoComplete="off"
                 />
+                <div style={{ fontSize: '11px', color: '#8888aa', marginTop: '4px' }}>
+                  {isLoadingSaranEdit ? '⏳ Mencari...' : 'Mulai ketik untuk saran lokasi'}
+                </div>
+                
+                {showSaranEdit && saranLokasiEdit.length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    background: '#1a1a2e',
+                    border: '1px solid #2a2a3e',
+                    borderRadius: '10px',
+                    marginTop: '4px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    zIndex: 100,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+                  }}>
+                    {saranLokasiEdit.map((item, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => pilihSaranEdit(item)}
+                        style={{
+                          padding: '10px 14px',
+                          cursor: 'pointer',
+                          borderBottom: idx < saranLokasiEdit.length - 1 ? '1px solid #2a2a3e' : 'none',
+                          fontSize: '14px',
+                          color: '#fff',
+                          transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#2a2a3e'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <div style={{ fontWeight: 500 }}>{item.display_name || item.name}</div>
+                        <div style={{ fontSize: '11px', color: '#8888aa' }}>
+                          {item.address?.city || item.address?.town || item.address?.county || ''}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="input-group">
@@ -1630,7 +1746,13 @@ export default function Home() {
   }
 
   return (
-    <main style={{ background: '#0a0a0f', minHeight: '100vh', padding: 'clamp(10px, 3vw, 16px)', paddingBottom: '100px', color: '#fff' }}>
+    <main style={{ 
+      background: '#0a0a0f', 
+      minHeight: '100vh', 
+      padding: 'clamp(10px, 3vw, 16px)', 
+      paddingBottom: 'clamp(20px, 4vw, 40px)',
+      color: '#fff' 
+    }}>
       <div className="container">
         {halaman === 'home' && renderHome()}
         {halaman === 'tambah' && renderTambah()}
@@ -1641,33 +1763,33 @@ export default function Home() {
 
       {/* ============== FOOTER KEREN ============== */}
       <div style={{
-        marginTop: 'clamp(20px, 5vw, 32px)',
+        marginTop: 'clamp(12px, 2vw, 16px)',
         borderTop: '2px solid #ff6b00',
-        paddingTop: 'clamp(16px, 3vw, 24px)',
-        paddingBottom: 'clamp(12px, 2.5vw, 16px)',
+        paddingTop: 'clamp(8px, 1.5vw, 12px)',
+        paddingBottom: 'clamp(8px, 1.5vw, 12px)',
       }}>
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '8px',
-          marginBottom: '8px'
+          gap: '4px',
+          marginBottom: '4px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{
               fontWeight: 800,
-              fontSize: 'clamp(16px, 4vw, 20px)',
+              fontSize: 'clamp(14px, 3vw, 16px)',
               color: '#ff6b00',
               letterSpacing: '0.5px'
             }}>
               🚀 GERAK DULU
             </span>
             <span style={{
-              fontSize: 'clamp(11px, 2vw, 12px)',
+              fontSize: 'clamp(10px, 1.8vw, 11px)',
               color: '#666',
               background: '#1a1a2e',
-              padding: '2px 10px',
+              padding: '1px 8px',
               borderRadius: '20px',
               border: '1px solid #2a2a3e'
             }}>
@@ -1677,11 +1799,11 @@ export default function Home() {
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 'clamp(12px, 3vw, 20px)',
+            gap: 'clamp(8px, 2vw, 12px)',
             flexWrap: 'wrap'
           }}>
             <span style={{
-              fontSize: 'clamp(13px, 2.8vw, 15px)',
+              fontSize: 'clamp(11px, 2vw, 12px)',
               color: '#aaa',
               display: 'flex',
               alignItems: 'center',
@@ -1690,7 +1812,7 @@ export default function Home() {
               📊 {data.length} spot
             </span>
             <span style={{
-              fontSize: 'clamp(13px, 2.8vw, 15px)',
+              fontSize: 'clamp(11px, 2vw, 12px)',
               color: posisi.lat ? '#4ade80' : '#f87171',
               display: 'flex',
               alignItems: 'center',
@@ -1706,18 +1828,18 @@ export default function Home() {
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '4px',
+          gap: '2px',
           borderTop: '1px solid #2a2a3e',
-          paddingTop: '8px'
+          paddingTop: '4px'
         }}>
           <span style={{
-            fontSize: 'clamp(12px, 2.4vw, 14px)',
+            fontSize: 'clamp(10px, 1.8vw, 11px)',
             color: '#666'
           }}>
             dibuat oleh <span style={{ color: '#ff6b00', fontWeight: 600 }}>mpermana99</span>
           </span>
           <span style={{
-            fontSize: 'clamp(12px, 2.4vw, 14px)',
+            fontSize: 'clamp(10px, 1.8vw, 11px)',
             color: '#555'
           }}>
             © {new Date().getFullYear()} Gerak Dulu
